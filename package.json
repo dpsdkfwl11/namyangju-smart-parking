@@ -1,0 +1,75 @@
+{
+  "name": "namyangju-smart-parking",
+  "version": "1.0.0",
+  "description": "남양주시 스마트주정차 데스크톱 앱",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "build": "electron-builder --win --x64",
+    "release": "electron-builder --win --x64 --publish always"
+  },
+  "keywords": [
+    "electron",
+    "map",
+    "parking"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
+    "@resvg/resvg-js": "^2.6.2",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.10.0",
+    "chart.js": "^4.5.1",
+    "electron-updater": "^6.3.9",
+    "xlsx": "^0.18.5"
+  },
+  "build": {
+    "appId": "kr.namyangju.smart-parking",
+    "productName": "남양주 스마트주정차",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "남양주 스마트주정차"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "dpsdkfwl11",
+      "repo": "namyangju-smart-parking"
+    },
+    "files": [
+      "**/*",
+      "!.git/**",
+      "!dist/**",
+      "!tests/**",
+      "!test.js",
+      "!launch.json",
+      "!**/*.md",
+      "!node_modules/.cache/**",
+      "!*.tmp*"
+    ]
+  }
+}
