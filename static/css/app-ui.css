@@ -1,0 +1,215 @@
+/* 메인 글로벌 네비게이션 탭 */
+.global-nav {
+  display: flex;
+  gap: 12px;
+  margin: 0 20px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.global-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.global-nav-btn:hover {
+  color: var(--primary-color);
+  background: var(--bg-glass);
+}
+
+.global-nav-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* 반응형: 텍스트 라벨 숨김 (아이콘 전용 모드) */
+@media (max-width: 1200px) {
+  .global-nav { gap: 4px; margin: 0 10px; }
+  .global-nav-btn { padding: 8px 12px; font-size: 13px; gap: 5px; }
+}
+
+@media (max-width: 1050px) {
+  .nav-label { display: none; }
+  .global-nav { gap: 2px; margin: 0 6px; }
+  .global-nav-btn { padding: 8px 10px; }
+}
+
+/* 로그인 오버레이 */
+#login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease;
+}
+
+#login-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-xl);
+  text-align: center;
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.login-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+.login-input-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.login-input-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.login-input-group input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.login-input-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.login-error {
+  color: var(--danger-color);
+  font-size: 13px;
+  margin-top: 12px;
+  min-height: 20px;
+}
+
+.login-remember-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.login-remember-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.login-remember-chk {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-color);
+  cursor: pointer;
+}
+
+/* 탭 컨텐츠 관리 */
+.tab-page {
+  display: none;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  background: var(--bg-primary);
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.tab-page.active {
+  display: block;
+}
+
+/* 설정 탭은 내부에서 자체 스크롤 관리 */
+#page-settings.active {
+  display: flex;
+  overflow: hidden;
+  height: calc(100vh - 64px);
+}
+
+/* 시작 로딩 오버레이 */
+#startup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease;
+}
+
+#startup-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
