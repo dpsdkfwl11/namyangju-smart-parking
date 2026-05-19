@@ -62,7 +62,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 자동 업데이트
   updater: {
-    onStatus: (callback) => ipcRenderer.on('update-status', (_e, data) => callback(data)),
-    install:  ()         => ipcRenderer.invoke('updater:install')
+    onStatus:      (callback) => ipcRenderer.on('update-status', (_e, data) => callback(data)),
+    getLastStatus: ()         => ipcRenderer.invoke('updater:getLastStatus'),
+    install:       ()         => ipcRenderer.invoke('updater:install')
   }
 });

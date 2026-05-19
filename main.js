@@ -3,11 +3,17 @@ const path = require('path');
 const IpcHandlers = require('./src/ipc/handlers');
 const { autoUpdater } = require('electron-updater');
 
-// 개발 중에는 업데이트 체크 비활성화
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let mainWindow = null;
+// 렌더러가 리스너를 등록하기 전에 발생한 업데이트 이벤트를 캐싱
+let _lastUpdateStatus = null;
+
+function _sendUpdateStatus(data) {
+  _lastUpdateStatus = data;
+  mainWindow?.webContents.send('update-status', data);
+}
 
 function createWindow () {
   mainWindow = new BrowserWindow({
@@ -30,33 +36,18 @@ function createWindow () {
 }
 
 function setupAutoUpdater() {
-  // 업데이트 있을 때 → 자동 다운로드 시작
   autoUpdater.on('update-available', (info) => {
-    mainWindow?.webContents.send('update-status', {
-      type: 'available',
-      version: info.version
-    });
+    _sendUpdateStatus({ type: 'available', version: info.version });
   });
 
-  // 최신 버전 사용 중
-  autoUpdater.on('update-not-available', () => {
-    // 조용히 무시
-  });
+  autoUpdater.on('update-not-available', () => {});
 
-  // 다운로드 진행률
   autoUpdater.on('download-progress', (progress) => {
-    mainWindow?.webContents.send('update-status', {
-      type: 'progress',
-      percent: Math.round(progress.percent)
-    });
+    _sendUpdateStatus({ type: 'progress', percent: Math.round(progress.percent) });
   });
 
-  // 다운로드 완료 → 재시작 유도
   autoUpdater.on('update-downloaded', (info) => {
-    mainWindow?.webContents.send('update-status', {
-      type: 'downloaded',
-      version: info.version
-    });
+    _sendUpdateStatus({ type: 'downloaded', version: info.version });
   });
 
   autoUpdater.on('error', (err) => {
@@ -69,17 +60,21 @@ ipcMain.handle('updater:install', () => {
   autoUpdater.quitAndInstall();
 });
 
+// 렌더러가 리스너 등록 후 캐싱된 상태를 요청
+ipcMain.handle('updater:getLastStatus', () => _lastUpdateStatus);
+
 app.whenReady().then(() => {
-  const ipcHandlers = new IpcHandlers(__dirname);
+  const ipcHandlers = new IpcHandlers(__dirname, app.getPath('userData'));
   ipcHandlers.register();
 
   createWindow();
 
-  // 패키징된 앱에서만 업데이트 체크
   if (app.isPackaged) {
     setupAutoUpdater();
-    // 앱 시작 3초 후 체크 (화면 로드 완료 후)
-    setTimeout(() => autoUpdater.checkForUpdates(), 3000);
+    // 페이지 로드 완료 후 2초 뒤 업데이트 체크 (렌더러 리스너 등록 보장)
+    mainWindow.webContents.once('did-finish-load', () => {
+      setTimeout(() => autoUpdater.checkForUpdates(), 2000);
+    });
   }
 
   app.on('activate', () => {
