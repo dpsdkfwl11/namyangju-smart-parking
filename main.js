@@ -1,14 +1,17 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, screen, dialog, ipcMain } = require('electron');
 const path = require('path');
-const IpcHandlers = require('./src/ipc/handlers');
-const Logger      = require('./src/logger');
+const IpcHandlers   = require('./src/ipc/handlers');
+const Logger        = require('./src/logger');
+const WindowState   = require('./src/window-state');
 const { autoUpdater } = require('electron-updater');
 
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
-let mainWindow = null;
-let log        = null;
+let mainWindow        = null;
+let log               = null;
+let winState          = null;
+let _manualUpdateCheck = false;
 // 렌더러가 리스너를 등록하기 전에 발생한 업데이트 이벤트를 캐싱
 let _lastUpdateStatus = null;
 
@@ -18,9 +21,12 @@ function _sendUpdateStatus(data) {
 }
 
 function createWindow () {
+  const savedOpts = winState?.isOnScreen(screen) ? winState.getBrowserWindowOptions() : {};
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    ...savedOpts,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -28,6 +34,12 @@ function createWindow () {
       webSecurity: true,
       preload: path.join(__dirname, 'preload.js')
     }
+  });
+
+  if (winState?._state?.maximized) mainWindow.maximize();
+
+  mainWindow.on('close', () => {
+    try { winState?.save(mainWindow); } catch (_) {}
   });
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
@@ -45,6 +57,10 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-not-available', (info) => {
     log.info(`최신 버전 사용 중: v${info.version}`);
+    if (_manualUpdateCheck) {
+      _manualUpdateCheck = false;
+      _sendUpdateStatus({ type: 'not-available', version: info.version });
+    }
   });
 
   autoUpdater.on('download-progress', (progress) => {
@@ -58,6 +74,10 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     log.error('AutoUpdater 오류:', err);
+    if (_manualUpdateCheck) {
+      _manualUpdateCheck = false;
+      _sendUpdateStatus({ type: 'error', message: err.message });
+    }
   });
 }
 
@@ -69,6 +89,21 @@ ipcMain.handle('updater:install', () => {
 
 // 렌더러가 리스너 등록 후 캐싱된 상태를 요청
 ipcMain.handle('updater:getLastStatus', () => _lastUpdateStatus);
+
+// 수동 업데이트 체크
+ipcMain.handle('updater:checkNow', async () => {
+  if (!app.isPackaged) {
+    return { type: 'not-available', version: app.getVersion() };
+  }
+  try {
+    _manualUpdateCheck = true;
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    _manualUpdateCheck = false;
+    log.error('수동 업데이트 체크 오류:', err);
+    _sendUpdateStatus({ type: 'error', message: err.message });
+  }
+});
 
 // 로그 폴더 열기
 ipcMain.handle('system:openLogFolder', () => {
@@ -94,6 +129,9 @@ app.whenReady().then(() => {
   process.on('unhandledRejection', (reason) => {
     log.error('unhandledRejection:', reason instanceof Error ? reason : String(reason));
   });
+
+  winState = new WindowState(app.getPath('userData'));
+  log.info(`창 상태 복원: ${JSON.stringify(winState._state)}`);
 
   const ipcHandlers = new IpcHandlers(__dirname, app.getPath('userData'), log);
   ipcHandlers.register();

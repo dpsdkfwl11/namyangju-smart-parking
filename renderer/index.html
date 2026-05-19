@@ -1196,6 +1196,20 @@
               </button>
             </div>
           </div>
+
+          <div class="settings-card">
+            <h3 class="settings-card-title">업데이트</h3>
+            <div class="settings-action-row">
+              <div>
+                <div class="settings-row-label">업데이트 확인</div>
+                <div class="settings-row-sub" id="set-update-status-text">최신 버전 여부를 지금 즉시 확인합니다.</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="set-update-check-btn" onclick="SettingsUI.checkUpdate()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                업데이트 확인
+              </button>
+            </div>
+          </div>
         </section>
 
       </div><!-- /.settings-body -->
@@ -1310,13 +1324,36 @@
   const progPct    = document.getElementById('update-progress-pct');
   const installBtn = document.getElementById('update-install-btn');
 
+  const SVG_REFRESH = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>';
+
+  function _resetCheckBtn(label) {
+    const btn = document.getElementById('set-update-check-btn');
+    if (btn) { btn.disabled = false; btn.innerHTML = SVG_REFRESH + ' ' + (label || '업데이트 확인'); }
+  }
+
   function applyStatus(data) {
     if (!data) return;
+    if (data.type === 'not-available') {
+      // 수동 체크 결과: 최신 버전
+      const el = document.getElementById('set-update-status-text');
+      if (el) el.textContent = `현재 최신 버전입니다 (v${data.version}).`;
+      _resetCheckBtn('업데이트 확인');
+      return;
+    }
+    if (data.type === 'error') {
+      const el = document.getElementById('set-update-status-text');
+      if (el) el.textContent = '업데이트 확인 중 오류가 발생했습니다.';
+      _resetCheckBtn('다시 시도');
+      return;
+    }
     banner.style.display = 'flex';
     if (data.type === 'available') {
       text.textContent = `새 버전 ${data.version} 다운로드 중...`;
       progWrap.style.display = 'flex';
       installBtn.style.display = 'none';
+      const el = document.getElementById('set-update-status-text');
+      if (el) el.textContent = `새 버전 ${data.version} 발견 — 자동 다운로드 중...`;
+      _resetCheckBtn('업데이트 확인');
     } else if (data.type === 'progress') {
       progBar.style.width = data.percent + '%';
       progPct.textContent = data.percent + '%';
@@ -1324,6 +1361,9 @@
       text.textContent = `버전 ${data.version} 업데이트 준비 완료`;
       progWrap.style.display = 'none';
       installBtn.style.display = 'inline-block';
+      const el = document.getElementById('set-update-status-text');
+      if (el) el.textContent = `v${data.version} 다운로드 완료 — 재시작 시 설치됩니다.`;
+      _resetCheckBtn('업데이트 확인');
     }
   }
 
@@ -6031,6 +6071,16 @@ window.SidebarUI = SidebarUI;
 const PatchNotes = (() => {
   const DATA = [
     {
+      version: '1.0.8',
+      date: '2026-05-19',
+      highlights: [
+        '창 크기/위치 저장 및 복원 — 앱 재시작 시 마지막 창 상태 유지 (최대화 포함)',
+        '설정 > 정보 탭에 수동 업데이트 확인 버튼 추가',
+        '앱 오류 로그 파일 저장 기능 추가 (userData/logs/app-YYYY-MM-DD.log)',
+        '고정형·주행형·시민신고 혼재 단속파일 마커 처리 오류 수정'
+      ]
+    },
+    {
       version: '1.0.7',
       date: '2026-05-19',
       highlights: [
@@ -6337,6 +6387,20 @@ const SettingsUI = (() => {
     try { await window.electronAPI?.settings?.openLogFolder(); } catch (_) {}
   }
 
+  async function checkUpdate() {
+    const btn  = document.getElementById('set-update-check-btn');
+    const text = document.getElementById('set-update-status-text');
+    if (btn)  { btn.disabled = true; btn.textContent = '확인 중…'; }
+    if (text) text.textContent = '서버에서 최신 버전을 확인하는 중입니다…';
+    try {
+      await window.electronAPI?.updater?.checkNow();
+    } catch (_) {
+      if (text) text.textContent = '업데이트 확인 중 오류가 발생했습니다.';
+      if (btn)  { btn.disabled = false; btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> 업데이트 확인'; }
+    }
+    // 결과는 update-status IPC 이벤트(applyStatus)로 수신됨
+  }
+
   // ── 초기화 (탭 진입 시 한 번) ──
   let _initialized = false;
   async function _init() {
@@ -6407,7 +6471,7 @@ const SettingsUI = (() => {
   return { showSection, updatePwStrength, changePassword, toggleTheme, applySidebarWidth, saveBasemap,
            applyMapZoom, saveMapCenter, toggleClusterDefault, saveToastPos, applyToastDur,
            toggleNotify, exportCCTV, exportEnforcement, resetCCTV, resetEnforcement,
-           openDbFolder, openLogFolder, _init };
+           openDbFolder, openLogFolder, checkUpdate, _init };
 })();
 
 window.SettingsUI = SettingsUI;
