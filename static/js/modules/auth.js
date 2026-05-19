@@ -136,8 +136,9 @@ class AuthModule {
     }
 
     setTimeout(() => {
-      // 대시보드 먼저 표시 (즉시 반응)
-      window.MainTabs?.show('dashboard');
+      // 마지막 활성 탭 복원 (없으면 대시보드)
+      const lastTab = localStorage.getItem('lastActiveTab') || 'dashboard';
+      window.MainTabs?.show(lastTab);
       // MapApp 초기화 백그라운드 시작 (지도탭 첫 진입 전 완료 목표)
       window._initMapApp?.().then(() => {
         window.MapApp?.showToast('남양주 스마트 주정차 준비 완료', 'success');
