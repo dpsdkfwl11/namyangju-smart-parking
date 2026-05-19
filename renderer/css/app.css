@@ -557,6 +557,30 @@
   color: var(--text-muted);
   font-size: 13px;
 }
+.date-quick-btn {
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.date-quick-btn:hover {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+}
+.date-quick-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-color);
+  margin: 0 2px;
+}
 
 /* ── 대시보드 ── */
 /* ── 대시보드 행 레이아웃 ── */
