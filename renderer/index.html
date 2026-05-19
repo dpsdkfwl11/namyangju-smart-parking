@@ -1259,14 +1259,15 @@
 <script>
 (function() {
   if (!window.electronAPI?.updater) return;
-  const banner   = document.getElementById('update-banner');
-  const text     = document.getElementById('update-banner-text');
-  const progWrap = document.getElementById('update-progress-wrap');
-  const progBar  = document.getElementById('update-progress-bar');
-  const progPct  = document.getElementById('update-progress-pct');
+  const banner     = document.getElementById('update-banner');
+  const text       = document.getElementById('update-banner-text');
+  const progWrap   = document.getElementById('update-progress-wrap');
+  const progBar    = document.getElementById('update-progress-bar');
+  const progPct    = document.getElementById('update-progress-pct');
   const installBtn = document.getElementById('update-install-btn');
 
-  window.electronAPI.updater.onStatus((data) => {
+  function applyStatus(data) {
+    if (!data) return;
     banner.style.display = 'flex';
     if (data.type === 'available') {
       text.textContent = `새 버전 ${data.version} 다운로드 중...`;
@@ -1280,7 +1281,13 @@
       progWrap.style.display = 'none';
       installBtn.style.display = 'inline-block';
     }
-  });
+  }
+
+  // 실시간 IPC 수신
+  window.electronAPI.updater.onStatus(applyStatus);
+
+  // 리스너 등록 전에 발생한 이벤트 캐시 조회 (타이밍 버그 방어)
+  window.electronAPI.updater.getLastStatus?.().then(applyStatus).catch(() => {});
 })();
 </script>
 
@@ -5949,6 +5956,14 @@ window.SidebarUI = SidebarUI;
 <script>
 const PatchNotes = (() => {
   const DATA = [
+    {
+      version: '1.0.5',
+      date: '2026-05-19',
+      highlights: [
+        '업데이트 배너 타이밍 버그 수정 (배너가 표시되지 않던 문제)',
+        '업데이트 상태 캐시 도입 — 이벤트 수신 순서에 무관하게 배너 표시 보장'
+      ]
+    },
     {
       version: '1.0.4',
       date: '2026-05-19',
