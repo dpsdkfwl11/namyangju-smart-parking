@@ -11,7 +11,6 @@ autoUpdater.autoInstallOnAppQuit = true;
 let mainWindow        = null;
 let log               = null;
 let winState          = null;
-let _manualUpdateCheck = false;
 // 렌더러가 리스너를 등록하기 전에 발생한 업데이트 이벤트를 캐싱
 let _lastUpdateStatus = null;
 
@@ -57,10 +56,6 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-not-available', (info) => {
     log.info(`최신 버전 사용 중: v${info.version}`);
-    if (_manualUpdateCheck) {
-      _manualUpdateCheck = false;
-      _sendUpdateStatus({ type: 'not-available', version: info.version });
-    }
   });
 
   autoUpdater.on('download-progress', (progress) => {
@@ -74,10 +69,6 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     log.error('AutoUpdater 오류:', err);
-    if (_manualUpdateCheck) {
-      _manualUpdateCheck = false;
-      _sendUpdateStatus({ type: 'error', message: err.message });
-    }
   });
 }
 
@@ -90,19 +81,35 @@ ipcMain.handle('updater:install', () => {
 // 렌더러가 리스너 등록 후 캐싱된 상태를 요청
 ipcMain.handle('updater:getLastStatus', () => _lastUpdateStatus);
 
-// 수동 업데이트 체크
-ipcMain.handle('updater:checkNow', async () => {
+// 수동 업데이트 체크 — Promise로 결과 직접 반환 (IPC 이벤트 경쟁 조건 없음)
+ipcMain.handle('updater:checkNow', () => {
   if (!app.isPackaged) {
     return { type: 'not-available', version: app.getVersion() };
   }
-  try {
-    _manualUpdateCheck = true;
-    await autoUpdater.checkForUpdates();
-  } catch (err) {
-    _manualUpdateCheck = false;
-    log.error('수동 업데이트 체크 오류:', err);
-    _sendUpdateStatus({ type: 'error', message: err.message });
-  }
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      autoUpdater.removeListener('update-not-available', onNotAvail);
+      autoUpdater.removeListener('update-available',     onAvail);
+      autoUpdater.removeListener('error',                onError);
+      resolve(result);
+    };
+    const onNotAvail = (info) => finish({ type: 'not-available', version: info.version });
+    const onAvail    = (info) => finish({ type: 'available',     version: info.version });
+    const onError    = (err)  => finish({ type: 'error', message: err.message });
+    // 15초 타임아웃
+    const timer = setTimeout(() => finish({ type: 'error', message: '업데이트 서버 응답 없음 (시간 초과)' }), 15000);
+    autoUpdater.once('update-not-available', onNotAvail);
+    autoUpdater.once('update-available',     onAvail);
+    autoUpdater.once('error',                onError);
+    autoUpdater.checkForUpdates().catch((err) => {
+      log.error('수동 업데이트 체크 오류:', err);
+      finish({ type: 'error', message: err.message });
+    });
+  });
 });
 
 // 로그 폴더 열기
