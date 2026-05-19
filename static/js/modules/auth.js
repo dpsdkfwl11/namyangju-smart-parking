@@ -142,6 +142,8 @@ class AuthModule {
       window._initMapApp?.().then(() => {
         window.MapApp?.showToast('남양주 스마트 주정차 준비 완료', 'success');
       }).catch(e => console.error('MapApp 초기화 오류:', e));
+      // 새 버전 패치노트 알림
+      window.PatchNotes?.showIfNew?.();
     }, 420);
   }
 
