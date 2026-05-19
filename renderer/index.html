@@ -1182,6 +1182,20 @@
               <span class="settings-info-value settings-info-path" id="set-info-datadir">—</span>
             </div>
           </div>
+
+          <div class="settings-card">
+            <h3 class="settings-card-title">로그</h3>
+            <div class="settings-action-row">
+              <div>
+                <div class="settings-row-label">로그 폴더 열기</div>
+                <div class="settings-row-sub">앱 오류 및 동작 기록 파일(app-YYYY-MM-DD.log)이 저장된 폴더를 엽니다. 30일 경과 시 자동 삭제.</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="SettingsUI.openLogFolder()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                폴더 열기
+              </button>
+            </div>
+          </div>
         </section>
 
       </div><!-- /.settings-body -->
@@ -3437,6 +3451,35 @@ class FileHandler {
             const searchAddr = /^[가-힣]+(동|읍|면|리)/.test(locName)
               ? `남양주시 ${locName}` : locName;
             geocodeQueue.push({ 행: i+1, addr: searchAddr, row });
+
+          } else if (rowType.includes('주행형')) {
+            // ── 주행형: 행 자체의 GPS_X/_GPS_Y 좌표 시도 → 없으면 주소 지오코딩
+            // 혼재 파일에서 hasCoords=false인 경우에도 개별 행 GPS를 읽어 처리
+            const gx = parseFloat(row['GPS_X']  || row['경도'] || '');
+            const gy = parseFloat(row['_GPS_Y'] || row['GPS_Y'] || row['위도'] || '');
+            let fx = gx, fy = gy;
+            // 경위도 뒤바뀜 자동 교정
+            if (isFinite(fx) && isFinite(fy) && fy > 124 && fx < 90) { [fx, fy] = [fy, fx]; }
+
+            if (isFinite(fx) && isFinite(fy) && fx > 124 && fx < 132 && fy > 33 && fy < 39) {
+              const coord = ol.proj.fromLonLat([fx, fy]);
+              if (coord && isFinite(coord[0]) && isFinite(coord[1])) {
+                const f = new ol.Feature({ geometry: new ol.geom.Point(coord) });
+                f.set('title',      locName);
+                f.set('category',   '업로드');
+                f.set('info',       { ...row, '_좌표출처':'GPS직접', '위도':fy, '경도':fx });
+                f.set('info_order', this.app.state.uploadedColumns);
+                f.setStyle(this.app.markers.getMarkerStyle('업로드'));
+                featuresToAdd.push(f);
+              } else {
+                failLog.push({ 행: i+1, 장소: locName, 이유: '좌표 변환 실패' });
+              }
+            } else {
+              // GPS 없음 → 주소 지오코딩 (시민신고와 동일 방식)
+              const searchAddr = /^[가-힣]+(동|읍|면|리)/.test(locName)
+                ? `남양주시 ${locName}` : locName;
+              geocodeQueue.push({ 행: i+1, addr: searchAddr, row });
+            }
 
           } else {
             // ── 고정형CCTV/기타: CCTV명 매핑
@@ -6290,6 +6333,10 @@ const SettingsUI = (() => {
     try { await window.electronAPI?.settings?.openDbFolder(); } catch (_) {}
   }
 
+  async function openLogFolder() {
+    try { await window.electronAPI?.settings?.openLogFolder(); } catch (_) {}
+  }
+
   // ── 초기화 (탭 진입 시 한 번) ──
   let _initialized = false;
   async function _init() {
@@ -6359,7 +6406,8 @@ const SettingsUI = (() => {
 
   return { showSection, updatePwStrength, changePassword, toggleTheme, applySidebarWidth, saveBasemap,
            applyMapZoom, saveMapCenter, toggleClusterDefault, saveToastPos, applyToastDur,
-           toggleNotify, exportCCTV, exportEnforcement, resetCCTV, resetEnforcement, openDbFolder, _init };
+           toggleNotify, exportCCTV, exportEnforcement, resetCCTV, resetEnforcement,
+           openDbFolder, openLogFolder, _init };
 })();
 
 window.SettingsUI = SettingsUI;
