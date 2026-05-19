@@ -377,11 +377,6 @@
           <span class="sb-result-cnt" id="sb-result-cnt">0개</span>
         </div>
         <div style="position:relative;margin-bottom:10px;">
-          <div style="position:absolute;top:0;bottom:0;left:10px;display:flex;align-items:center;pointer-events:none;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-          </div>
           <input type="text" id="sb-search-input" class="sb-search-input"
                  placeholder="CCTV명 또는 주소..."
                  oninput="SidebarUI.search.run(this.value)">
@@ -2130,8 +2125,9 @@ class MapApplication {
     // 파일 업로드 UI 초기화
     try { this.fileHandler?.reset(); } catch(e) {}
 
-    // 공간분석 드로우 모드 해제
+    // 공간분석 드로우 모드 해제 + 선택 영역 초기화
     try { if (this.spatialStats?.drawMode) this.spatialStats.toggleDrawMode(); } catch(e) {}
+    try { this.spatialStats?.clearSelection?.(); } catch(e) {}
 
     // 검색 입력창 비우기
     const searchInput = document.getElementById('unified-search-input');
@@ -5991,6 +5987,15 @@ window.SidebarUI = SidebarUI;
 <script>
 const PatchNotes = (() => {
   const DATA = [
+    {
+      version: '1.0.7',
+      date: '2026-05-19',
+      highlights: [
+        '시민신고 2024년도(24.01.01~12.31) 데이터 추가',
+        '지도 초기화 버튼 클릭 시 선택영역 통계 영역도 함께 초기화',
+        '지도 탭 CCTV 검색창 돋보기 아이콘 제거'
+      ]
+    },
     {
       version: '1.0.6',
       date: '2026-05-19',

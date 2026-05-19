@@ -3,14 +3,20 @@ const path = require('path');
 const fs = require('fs');
 
 class DatabaseManager {
-  constructor(appPath) {
-    const dataDir = path.join(appPath, 'data');
+  constructor(appPath, userDataPath) {
+    const dataDir = path.join(userDataPath || appPath, 'data');
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    
+
+    // 기존 설치(appPath/data/app.db)에서 마이그레이션
+    const legacyDbPath = path.join(appPath, 'data', 'app.db');
     const dbPath = path.join(dataDir, 'app.db');
-    this.db = new Database(dbPath, { verbose: console.log });
+    if (!fs.existsSync(dbPath) && fs.existsSync(legacyDbPath)) {
+      try { fs.copyFileSync(legacyDbPath, dbPath); } catch (_) {}
+    }
+
+    this.db = new Database(dbPath);
     this.initSchema(appPath);
   }
 
