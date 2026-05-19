@@ -6,9 +6,10 @@ const XLSX = require('xlsx');
 const DatabaseManager = require('../db/database');
 
 class IpcHandlers {
-  constructor(appPath) {
+  constructor(appPath, userDataPath) {
     this.appPath = appPath;
-    this.dbManager = new DatabaseManager(appPath);
+    this.userDataPath = userDataPath || appPath;
+    this.dbManager = new DatabaseManager(appPath, this.userDataPath);
     this.db = this.dbManager.getDb();
     
     // 기본 비밀번호 초기화 (1234 해시)
@@ -205,16 +206,24 @@ class IpcHandlers {
       return require(path.join(this.appPath, 'package.json')).version;
     });
 
-    // 8. 데이터 관리: Excel 파일 스캔
+    // 8. 데이터 관리: Excel 파일 스캔 (bundled + user-added)
     ipcMain.handle('data:scanExcelFiles', () => {
       try {
-        const dataDir = path.join(this.appPath, 'data');
-        if (!fs.existsSync(dataDir)) return [];
-        const files = fs.readdirSync(dataDir)
-          .filter(f => f.endsWith('.xlsx') || f.endsWith('.xls'));
+        const seen = new Map();
+        const scanDir = (dir) => {
+          if (!fs.existsSync(dir)) return;
+          fs.readdirSync(dir)
+            .filter(f => f.endsWith('.xlsx') || f.endsWith('.xls'))
+            .forEach(fileName => {
+              if (!seen.has(fileName)) {
+                seen.set(fileName, path.join(dir, fileName));
+              }
+            });
+        };
+        scanDir(path.join(this.appPath, 'data'));
+        scanDir(path.join(this.userDataPath, 'data'));
 
-        return files.map(fileName => {
-          const filePath = path.join(dataDir, fileName);
+        return Array.from(seen.entries()).map(([fileName, filePath]) => {
           const stat = fs.statSync(filePath);
           const row = this.db.prepare(
             'SELECT COUNT(*) as cnt FROM enforcement WHERE source_file = ?'
@@ -234,7 +243,10 @@ class IpcHandlers {
     // 9. 데이터 관리: Excel → DB import (트랜잭션, 멱등성 보장)
     ipcMain.handle('data:importExcel', (event, fileName) => {
       try {
-        const filePath = path.join(this.appPath, 'data', fileName);
+        let filePath = path.join(this.userDataPath, 'data', fileName);
+        if (!fs.existsSync(filePath)) {
+          filePath = path.join(this.appPath, 'data', fileName);
+        }
         if (!fs.existsSync(filePath)) {
           return { success: false, error: '파일을 찾을 수 없습니다.' };
         }
@@ -433,8 +445,8 @@ class IpcHandlers {
     ipcMain.handle('system:getAppInfo', () => {
       try {
         const pkg = require(path.join(this.appPath, 'package.json'));
-        const dbPath = path.join(this.appPath, 'data', 'app.db');
-        const dataDir = path.join(this.appPath, 'data');
+        const dbPath = path.join(this.userDataPath, 'data', 'app.db');
+        const dataDir = path.join(this.userDataPath, 'data');
         const pwRow = this.db.prepare("SELECT value FROM app_config WHERE key='pw_changed_at'").get();
         return {
           appVersion: pkg.version,
@@ -451,7 +463,7 @@ class IpcHandlers {
     ipcMain.handle('system:openDbFolder', () => {
       try {
         const { shell } = require('electron');
-        shell.openPath(path.join(this.appPath, 'data'));
+        shell.openPath(path.join(this.userDataPath, 'data'));
         return { success: true };
       } catch (e) { return { success: false, error: e.message }; }
     });
@@ -481,7 +493,7 @@ class IpcHandlers {
           properties: ['openFile', 'multiSelections']
         });
         if (canceled || !filePaths?.length) return { success: false, canceled: true };
-        const dataDir = path.join(this.appPath, 'data');
+        const dataDir = path.join(this.userDataPath, 'data');
         if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
         const added = [];
         for (const srcPath of filePaths) {
