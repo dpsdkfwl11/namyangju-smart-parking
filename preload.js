@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resetEnforcement: ()     => ipcRenderer.invoke('db:resetEnforcement'),
     getAppInfo:       ()     => ipcRenderer.invoke('system:getAppInfo'),
     openDbFolder:     ()     => ipcRenderer.invoke('system:openDbFolder'),
+    openLogFolder:    ()     => ipcRenderer.invoke('system:openLogFolder'),
     captureMap:       (rect) => ipcRenderer.invoke('system:captureMap', rect)
   },
 

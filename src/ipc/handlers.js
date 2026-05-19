@@ -6,12 +6,15 @@ const XLSX = require('xlsx');
 const DatabaseManager = require('../db/database');
 
 class IpcHandlers {
-  constructor(appPath, userDataPath) {
+  constructor(appPath, userDataPath, log) {
     this.appPath = appPath;
     this.userDataPath = userDataPath || appPath;
+    this.log = log || { info: console.log, warn: console.warn, error: console.error };
     this.dbManager = new DatabaseManager(appPath, this.userDataPath);
     this.db = this.dbManager.getDb();
-    
+
+    this.log.info(`DB 경로: ${path.join(this.userDataPath, 'data', 'app.db')}`);
+
     // 기본 비밀번호 초기화 (1234 해시)
     try {
       const stmt = this.db.prepare('SELECT value FROM app_config WHERE key = ?');
@@ -20,7 +23,7 @@ class IpcHandlers {
         const hash = bcrypt.hashSync('1234', 10);
         this.db.prepare('INSERT INTO app_config (key, value) VALUES (?, ?)').run('admin_password', hash);
       }
-    } catch(e) { console.error('Init password error:', e); }
+    } catch(e) { this.log.error('Init password error:', e); }
 
     // CCTV JSON 자동 마이그레이션 (DB 비어있을 때만 실행)
     try {
@@ -51,7 +54,7 @@ class IpcHandlers {
           console.log(`[Auto-migrate] CCTV ${items.length}건 DB 초기화 완료`);
         }
       }
-    } catch(e) { console.error('Auto-migrate CCTV error:', e); }
+    } catch(e) { this.log.error('Auto-migrate CCTV error:', e); }
   }
 
   register() {
@@ -84,7 +87,7 @@ class IpcHandlers {
         if (row && bcrypt.compareSync(password, row.value)) {
           return { success: true, data: { token: 'mock_token_' + Date.now() } };
         }
-      } catch (e) { console.error('Auth error', e); }
+      } catch (e) { this.log.error('Auth error', e); }
       return { success: false, message: 'Invalid password' };
     });
 
@@ -169,7 +172,7 @@ class IpcHandlers {
         `);
         return stmt.all(days || 30);
       } catch (e) {
-        console.error('getTimeSeries error:', e);
+        this.log.error('getTimeSeries error:', e);
         return [];
       }
     });
@@ -183,7 +186,7 @@ class IpcHandlers {
         }
         return null;
       } catch (e) {
-        console.error('getBusLanes error:', e);
+        this.log.error('getBusLanes error:', e);
         return null;
       }
     });
@@ -196,7 +199,7 @@ class IpcHandlers {
         }
         return null;
       } catch (e) {
-        console.error('getFlexibleZones error:', e);
+        this.log.error('getFlexibleZones error:', e);
         return null;
       }
     });
@@ -235,7 +238,7 @@ class IpcHandlers {
           };
         });
       } catch (e) {
-        console.error('data:scanExcelFiles error:', e);
+        this.log.error('data:scanExcelFiles error:', e);
         return [];
       }
     });
@@ -298,7 +301,7 @@ class IpcHandlers {
         importTx(dataRows);
         return { success: true, count: dataRows.length };
       } catch (e) {
-        console.error('data:importExcel error:', e);
+        this.log.error('data:importExcel error:', e);
         return { success: false, error: e.message };
       }
     });
@@ -372,7 +375,7 @@ class IpcHandlers {
 
         return { totals: totalsMap, totalAll, topDong, allDong, byViolation, allViol, byMonth, byZone };
       } catch (e) {
-        console.error('data:getEnforcementStats error:', e);
+        this.log.error('data:getEnforcementStats error:', e);
         return { totals: {}, totalAll: 0, topDong: [], byViolation: [], byMonth: [], byZone: [] };
       }
     });
@@ -477,7 +480,7 @@ class IpcHandlers {
         const img = await win.webContents.capturePage(rect || undefined);
         return img.toDataURL();
       } catch (e) {
-        console.error('system:captureMap error:', e);
+        this.log.error('system:captureMap error:', e);
         return null;
       }
     });
@@ -503,7 +506,7 @@ class IpcHandlers {
         }
         return { success: true, files: added };
       } catch (e) {
-        console.error('data:addExcelFiles error:', e);
+        this.log.error('data:addExcelFiles error:', e);
         return { success: false, error: e.message };
       }
     });
@@ -532,7 +535,7 @@ class IpcHandlers {
         fs.writeFileSync(filePath, pdfData);
         return { success: true };
       } catch (e) {
-        console.error('report:exportPDF error:', e);
+        this.log.error('report:exportPDF error:', e);
         return { success: false, error: e.message };
       }
     });
