@@ -204,6 +204,40 @@ class IpcHandlers {
       }
     });
 
+    ipcMain.handle('zones:getParkingLots', () => {
+      try {
+        const filePath = path.join(this.appPath, 'data', '경기도_남양주시_주차장정보_20260311.csv');
+        if (!fs.existsSync(filePath)) return null;
+        const wb = XLSX.readFile(filePath);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        return rows
+          .filter(r => r['위도'] && r['경도'])
+          .map(r => ({
+            주차장명: String(r['주차장명'] || ''),
+            주차장구분: String(r['주차장구분'] || ''),
+            주차장유형: String(r['주차장유형'] || ''),
+            소재지도로명주소: String(r['소재지도로명주소'] || ''),
+            소재지지번주소: String(r['소재지지번주소'] || ''),
+            주차구획수: String(r['주차구획수'] || ''),
+            운영요일: String(r['운영요일'] || ''),
+            평일운영시작시각: String(r['평일운영시작시각'] || ''),
+            평일운영종료시각: String(r['평일운영종료시각'] || ''),
+            요금정보: String(r['요금정보'] || ''),
+            주차기본시간: String(r['주차기본시간'] || ''),
+            주차기본요금: String(r['주차기본요금'] || ''),
+            결제방법: String(r['결제방법'] || ''),
+            전화번호: String(r['전화번호'] || ''),
+            위도: String(r['위도']),
+            경도: String(r['경도']),
+            장애인전용주차구역보유여부: String(r['장애인전용주차구역보유여부'] || '')
+          }));
+      } catch (e) {
+        this.log.error('zones:getParkingLots error:', e);
+        return null;
+      }
+    });
+
     // 7. System handlers
     ipcMain.handle('system:getAppVersion', () => {
       return require(path.join(this.appPath, 'package.json')).version;

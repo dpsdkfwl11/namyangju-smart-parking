@@ -3,10 +3,8 @@ const path = require('path');
 const IpcHandlers   = require('./src/ipc/handlers');
 const Logger        = require('./src/logger');
 const WindowState   = require('./src/window-state');
-const { autoUpdater } = require('electron-updater');
-
-autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+// autoUpdater는 app.isPackaged 환경에서만 lazy-require (6.8.x 이상: require 시점에 app.getVersion() 호출)
+let autoUpdater = null;
 
 let mainWindow        = null;
 let log               = null;
@@ -74,6 +72,7 @@ function setupAutoUpdater() {
 
 // 렌더러에서 "지금 재시작" 버튼 누를 때
 ipcMain.handle('updater:install', () => {
+  if (!autoUpdater) return;
   log.info('사용자 요청으로 업데이트 설치 시작');
   autoUpdater.quitAndInstall();
 });
@@ -146,6 +145,11 @@ app.whenReady().then(() => {
   createWindow();
 
   if (app.isPackaged) {
+    // 패키지 환경에서만 autoUpdater 초기화 (lazy-require)
+    const { autoUpdater: _au } = require('electron-updater');
+    autoUpdater = _au;
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
     setupAutoUpdater();
     // 페이지 로드 완료 후 2초 뒤 업데이트 체크 (렌더러 리스너 등록 보장)
     mainWindow.webContents.once('did-finish-load', () => {
