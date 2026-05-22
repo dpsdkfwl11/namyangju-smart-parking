@@ -26,7 +26,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Zones
   zones: {
     getBusLanes: () => ipcRenderer.invoke('zones:getBusLanes'),
-    getFlexibleZones: () => ipcRenderer.invoke('zones:getFlexibleZones')
+    getFlexibleZones: () => ipcRenderer.invoke('zones:getFlexibleZones'),
+    getParkingLots: () => ipcRenderer.invoke('zones:getParkingLots')
   },
   
   // Stats
