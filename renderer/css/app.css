@@ -1729,6 +1729,32 @@
   }
   body.sel-print #sel-report-overlay .report-paper:last-child { page-break-after: avoid; }
   body.sel-print #sel-rp-chart-wrap { break-inside: avoid; }
+
+  /* 핫스팟 분석 리포트 인쇄 격리 */
+  body.hs-report-print > *:not(#hs-report-overlay) { display: none !important; }
+  body.hs-report-print #hs-report-overlay {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  body.hs-report-print #hs-report-inner {
+    width: 100% !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    display: block !important;
+  }
+  body.hs-report-print #hs-report-controls { display: none !important; }
+  body.hs-report-print #hs-report-overlay .report-paper {
+    box-shadow: none !important;
+    width: 100% !important;
+    padding: 20mm 20mm 24mm !important;
+    min-height: unset !important;
+    display: block !important;
+    page-break-after: always;
+  }
+  body.hs-report-print #hs-report-overlay .report-paper:last-child { page-break-after: avoid; }
 }
 
 /* 반응형: 헤더 우측 통계 숨김 */

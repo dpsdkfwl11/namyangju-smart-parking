@@ -2,9 +2,9 @@
 
 > 남양주시 스마트주정차 단속 관리 데스크톱 애플리케이션
 
-[![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)](https://github.com/dpsdkfwl11/namyangju-smart-parking/releases/latest)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/dpsdkfwl11/namyangju-smart-parking/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Windows%20x64-lightgrey.svg)]()
-[![Electron](https://img.shields.io/badge/Electron-30.5.1-47848F.svg)](https://www.electronjs.org/)
+[![Electron](https://img.shields.io/badge/Electron-30.0.0-47848F.svg)](https://www.electronjs.org/)
 [![License](https://img.shields.io/badge/license-ISC-green.svg)]()
 
 ---
@@ -23,30 +23,58 @@
 ## 주요 기능
 
 ### 지도 탭
-- **국토교통부 V-World 지도** (OpenLayers 3 기반) — 일반·화이트·다크·하이브리드 배경지도 선택
+
+- **국토교통부 V-World 지도** (OpenLayers 기반) — 일반·화이트·다크·위성·하이브리드 배경지도 선택
 - 단속 유형별 마커 시각화: **고정형 CCTV** / **주행형 CCTV** / **시민신고**
 - CCTV 위치 마커 표시 (운영 중 / 미운영 구분)
 - **레이어 토글**
-  - 탄력운영구간 (GeoJSON)
-  - 어린이보호구역 (국가교통정보센터 API 실시간 연동)
+  - 탄력운영구간 (GeoJSON, 파란색 폴리곤)
+  - 어린이보호구역 (공공데이터포털 API 실시간 연동, EPSG:5181 좌표 변환)
+  - 공영주차장 (번들 CSV 데이터, 파란 P 마커)
   - 버스전용차로 (GeoJSON)
-  - 읍면동 경계
+  - 읍면동 경계 / 외곽 마스크
 - **영역 선택 통계** — 자유형·원형·사각형 3가지 방식으로 영역 지정 후 해당 영역 내 단속 통계 즉시 계산
   - 영역 내 CSV 내보내기
   - 영역 선택 리포트 PDF 출력
-- 지도 초기화 시 영역 선택 통계도 함께 초기화
 - Excel 단속자료 직접 업로드 → 지도에 마커 표시
   - 고정형·주행형·시민신고가 **혼재된 파일**도 행 단위로 유형 판별하여 정확히 처리
 - V-World 주소 API 기반 지오코딩 (시민신고 주소 → 좌표 변환)
 - 지도 내 장소 검색 (V-World 검색 API)
 
+### 지도 탭 — 단속 분석 도구 *(v1.0.9 신규)*
+
+사이드바 **"분석 도구"** 섹션에서 수동 업로드한 마커 데이터를 실시간으로 분석합니다.  
+DB 단속 데이터와 무관하게, **현재 지도에 표시된 마커만** 대상으로 동작합니다.
+
+#### 단속 열지도
+- 업로드된 마커를 밀도 기반 색상 원으로 오버레이 (위험등급별 빨강→초록)
+- 월 평균 건수에 비례한 원 크기·불투명도
+
+#### 핫스팟 분석 패널
+- **DBSCAN 클러스터링** — 200m 격자 대신 Haversine 거리(eps=250m) 기반으로 인접 마커를 자연스럽게 병합
+  - 격자 경계에서 분리되던 핫스팟이 올바르게 하나의 군집으로 통합됨
+  - DBSCAN 실패 시 기존 격자 방식으로 자동 폴백
+- **이상감지 배지** — 각 핫스팟에 자동 태그 표시
+  - `⚡ 이상` — Z-score > 2.5: 전체 구간 대비 통계적 이상치
+  - `📈 급증` — 최근 3개월이 직전 분기 평균의 2배 이상 급증
+- 위험등급별 요약: 🔴 상시단속 / 🟠 고위험 / 🟡 주의 / 🟢 보통
+- 등급 필터 (전체 / 상시+고위험 / 상시만)
+- 항목 클릭 시 해당 위치로 지도 이동
+
+#### 네비게이션 데이터 내보내기
+- **GeoJSON 내보내기** — 네이버지도·Tmap 제출용 (위치·위험등급·알림메시지 포함)
+- **CSV 내보내기** — 카카오맵·범용 (BOM 포함 UTF-8)
+- 등급 필터와 연동하여 선택한 등급만 내보내기 가능
+
 ### 대시보드
+
 - CCTV 현황: 전체 / 운영 중 / 미운영 대수
-- 단속 통계: 전체 건수, 유형별 (고정형 / 주행형 / 시민신고) 분류
+- 단속 현황: 전체 건수, 유형별 (고정형 / 주행형 / 시민신고) 분류
 - TOP 5 단속 지역 (읍면동 기준, 16개 법정동 + 기타로 정규화)
 - 월별 단속 건수 추이 차트 (Chart.js)
 
 ### 통계 / 리포트
+
 - 기간별 단속 통계 조회 및 차트 (읍면동별, 단속구분별, 위반법규별)
 - **빠른 날짜 선택**: 1개월 / 3개월 / 6개월 / −1년 / +1년 버튼
 - 한국 시간대(UTC+9) 기준 정확한 날짜 계산
@@ -54,15 +82,18 @@
 - PDF 저장 / 인쇄
 
 ### 데이터 관리
+
 - Excel 파일 스캔 및 가져오기 (번들 데이터 + 사용자 추가 파일 통합 조회)
 - CCTV 데이터 Excel 내보내기
 - 단속 데이터 Excel 내보내기
 
 ### CCTV 관리
+
 - CCTV 목록 조회 / 추가 / 수정 / 삭제
 - 운영 상태 관리
 
 ### 설정
+
 - **테마**: 다크 / 라이트 모드 전환
 - **비밀번호 변경**: bcryptjs 해시 처리
 - **지도**: 기본 배경지도, 초기 위치·줌, 클러스터 기본값 설정
@@ -72,21 +103,19 @@
 - **정보**: 앱 버전·Electron·Node.js 버전, DB 경로 확인, **수동 업데이트 확인**, **로그 폴더 열기**
 
 ### 자동 업데이트
+
 - 앱 실행 후 2초 뒤 GitHub Releases 자동 체크
 - 새 버전 발견 시 우하단 플로팅 카드로 알림 및 다운로드 진행률 표시
 - 설정 > 정보 탭에서 **수동 업데이트 확인** 가능 (15초 타임아웃 적용)
 - 앱 종료 시 자동 설치 (`autoInstallOnAppQuit`)
 
-### 패치노트 알림
-- 로그인 직후 최신 버전 패치노트 모달 표시
-- "다시 확인하지 않기" 체크 시 해당 버전 알림 비활성화
-- 설정 > 패치노트 탭에서 전체 버전 이력 열람
-
 ### 안정성 기능
+
 - **창 상태 복원**: 앱 종료 시 창 크기·위치·최대화 상태 저장, 재시작 시 복원 (연결 해제된 모니터 방어 포함)
 - **탭 상태 복원**: 마지막으로 열었던 탭 기억 및 복원
 - **앱 로그 파일**: `userData/logs/app-YYYY-MM-DD.log` 일별 로그, 30일 자동 삭제
 - **전역 오류 캐치**: `uncaughtException` / `unhandledRejection` 로그 기록
+- **분석 폴백**: DBSCAN·이상감지 실패 시 기존 격자 방식으로 자동 복구
 
 ---
 
@@ -94,8 +123,8 @@
 
 | 구분 | 기술 | 버전 |
 |------|------|------|
-| 프레임워크 | [Electron](https://www.electronjs.org/) | 30.5.1 |
-| 지도 | [국토교통부 V-World](https://www.vworld.kr/) (OpenLayers 3 내장) | 2.0 |
+| 프레임워크 | [Electron](https://www.electronjs.org/) | 30.0.0 |
+| 지도 | [국토교통부 V-World](https://www.vworld.kr/) (OpenLayers 내장) | 2.0 |
 | 데이터베이스 | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | 12.10.0 |
 | 차트 | [Chart.js](https://www.chartjs.org/) | 4.5.1 |
 | PDF 캡처 | [html2canvas](https://html2canvas.hertzen.com/) | 1.4.1 |
@@ -104,15 +133,25 @@
 | 인증 | [bcryptjs](https://github.com/dcodeIO/bcrypt.js) | 3.0.3 |
 | 빌드 | [electron-builder](https://www.electron.build/) | 24.13.3 |
 
+**클러스터링 / 분석 알고리즘** (외부 라이브러리 없음, 순수 JS 내장 구현)
+
+| 알고리즘 | 용도 |
+|---------|------|
+| DBSCAN (Haversine 거리) | 핫스팟 격자 병합 — 인접 200m 셀을 자연스러운 군집으로 통합 |
+| Z-score 이상감지 | 전체 핫스팟 중 통계적 이상치 탐지 |
+| 추세 비율 (최근 3개월 vs 직전 분기) | 단속 급증 구간 자동 감지 |
+
 **외부 API**
+
 | API | 용도 |
 |-----|------|
-| V-World 지도 API (`map.vworld.kr`) | 지도 렌더링 (OpenLayers 3 래퍼) |
+| V-World 지도 API (`map.vworld.kr`) | 지도 렌더링 (OpenLayers 래퍼) |
 | V-World 주소 API (`api.vworld.kr/req/address`) | 시민신고 주소 → 좌표 지오코딩 |
 | V-World 검색 API (`api.vworld.kr/req/search`) | 지도 내 장소 검색 |
-| 국가교통정보센터 API (`utic.go.kr`) | 어린이보호구역 데이터 실시간 조회 |
+| 공공데이터포털 API (`apis.data.go.kr/1320000/safetyzonedtlinfo/getdtllist`) | 어린이보호구역 실시간 조회 (EPSG:5181 좌표 변환) |
 
 **보안 설정**
+
 - `contextIsolation: true` — 렌더러와 Node.js 컨텍스트 완전 분리
 - `nodeIntegration: false` — 렌더러에서 Node.js 직접 접근 차단
 - `webSecurity: true` — 기본 웹 보안 정책 유지
@@ -138,7 +177,8 @@
 
 ```
 %APPDATA%\namyangju-smart-parking\
-├── namyangju-parking.db     # SQLite 데이터베이스 (CCTV, 단속 기록)
+├── data\
+│   └── app.db               # SQLite 데이터베이스 (CCTV, 단속 기록)
 ├── window-state.json        # 창 크기·위치·최대화 상태
 └── logs\
     └── app-YYYY-MM-DD.log   # 일별 앱 로그 (30일 경과 시 자동 삭제)
@@ -166,8 +206,8 @@ npm install
 # better-sqlite3 네이티브 모듈 Electron 버전에 맞게 재빌드
 npm run rebuild
 
-# 개발 모드 실행 (DevTools 자동 열림)
-npm start -- --dev
+# 개발 모드 실행
+npm start
 ```
 
 ### 빌드 및 배포
@@ -200,7 +240,7 @@ namyangju-smart-parking/
 │
 ├── src/
 │   ├── ipc/
-│   │   └── handlers.js      # IPC 핸들러 (CCTV CRUD, Excel, Stats, DB 등)
+│   │   └── handlers.js      # IPC 핸들러 (CCTV CRUD, Excel, Stats, 분석, 내보내기)
 │   ├── db/
 │   │   └── database.js      # SQLite DB 초기화 및 쿼리 (better-sqlite3)
 │   ├── logger.js            # 일별 로그 파일 시스템 (30일 자동 삭제)
@@ -209,25 +249,23 @@ namyangju-smart-parking/
 ├── renderer/
 │   └── index.html           # 단일 파일 렌더러 (전체 UI — HTML/CSS/JS 통합)
 │                            #  - 탭: 지도 / 대시보드 / 통계 / 리포트 / 데이터관리 / 설정
-│                            #  - 모듈: MainTabs, SettingsUI, PatchNotes, SidebarUI
-│                            #  - 지도: V-World vw.ol3 + OpenLayers
+│                            #  - 레이어: CCTV, 탄력운영구간, 어린이보호구역, 공영주차장, 버스전용차로
+│                            #  - 분석: AnalysisManager (DBSCAN + Z-score + 내보내기)
 │
 ├── static/
 │   └── js/modules/
 │       └── auth.js          # 로그인/로그아웃 인증 모듈
 │
 └── data/                    # 번들 단속 데이터 및 GeoJSON (DB 파일은 빌드 제외)
-    ├── bus_lane.geojson             # 버스전용차로 레이어
-    ├── flexible_zone.geojson        # 탄력운영구간 레이어
+    ├── bus_lane.geojson
+    ├── flexible_zone.geojson
+    ├── 경기도_남양주시_주차장정보_20260311.csv
     ├── 고정형 단속자료 24.01.01~12.31.xlsx
     ├── 고정형 단속자료 25.01.01~12.31.xlsx
-    ├── 고정형 단속자료 26.01.01~03.31.xlsx
-    ├── 주행형 단속자료 24.01.01~12.31.xlsx
-    ├── 주행형 단속자료 25.01.01~12.31.xlsx
-    ├── 주행형 단속자료 26.01.01~03.31.xlsx
     ├── 시민신고 24.01.01~12.31.xlsx
     ├── 시민신고 25.01.01~12.31.xlsx
-    └── 시민신고 26.01.01~03.31.xlsx
+    ├── 주행형 단속자료 24.01.01~12.31.xlsx
+    └── 주행형 단속자료 25.01.01~12.31.xlsx
 ```
 
 ---
@@ -238,9 +276,10 @@ namyangju-smart-parking/
 
 | 유형 | 포함 기간 |
 |------|----------|
-| 고정형 CCTV | 2024년 전체 · 2025년 전체 · 2026년 1~3월 |
-| 주행형 CCTV | 2024년 전체 · 2025년 전체 · 2026년 1~3월 |
-| 시민신고 | 2024년 전체 · 2025년 전체 · 2026년 1~3월 |
+| 고정형 CCTV | 2024년 전체 · 2025년 전체 |
+| 주행형 CCTV | 2024년 전체 · 2025년 전체 |
+| 시민신고 | 2024년 전체 · 2025년 전체 |
+| 공영주차장 | 2026년 3월 기준 (경기도 남양주시) |
 
 ---
 
@@ -248,15 +287,16 @@ namyangju-smart-parking/
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v1.0.8** | 2026-05-19 | 창 크기·위치 저장/복원, 탭 상태 복원, 수동 업데이트 확인 버튼, 앱 로그 파일 시스템, 혼재 단속파일 마커 처리 오류 수정, 수동 업데이트 응답 없음 수정 |
-| v1.0.7 | 2026-05-19 | 시민신고 2024년도 데이터 추가, 지도 초기화 시 선택영역 통계 함께 초기화, CCTV 검색창 돋보기 아이콘 제거 |
-| v1.0.6 | 2026-05-19 | 업데이트 알림 카드 디자인 개선 (우하단 플로팅 카드, 하드코딩 색상으로 가시성 향상) |
-| v1.0.5 | 2026-05-19 | 업데이트 배너 타이밍 버그 수정 (캐시+replay 방식, did-finish-load 후 체크) |
+| **v1.0.9** | 2026-05-29 | 공영주차장 레이어 추가, 어린이보호구역 API 공공데이터포털로 교체(EPSG:5181 좌표 변환), 탄력운영구간 색상 파란색 변경, **단속 분석 도구 신규** (열지도·핫스팟 패널·GeoJSON/CSV 내보내기), **DBSCAN 클러스터링** 적용, **Z-score 이상감지** 배지 |
+| v1.0.8 | 2026-05-19 | 창 크기·위치 저장/복원, 탭 상태 복원, 수동 업데이트 확인 버튼, 앱 로그 파일 시스템, 혼재 단속파일 마커 처리 오류 수정 |
+| v1.0.7 | 2026-05-19 | 시민신고 2024년도 데이터 추가, 지도 초기화 시 선택영역 통계 함께 초기화 |
+| v1.0.6 | 2026-05-19 | 업데이트 알림 카드 디자인 개선 (우하단 플로팅 카드) |
+| v1.0.5 | 2026-05-19 | 업데이트 배너 타이밍 버그 수정 |
 | v1.0.4 | 2026-05-19 | 로그인 후 패치노트 배너 추가, 설정 탭 패치노트 섹션 추가 |
 | v1.0.3 | 2026-05-19 | Program Files 설치 시 DB 오류 수정, DB·파일 경로를 userData로 이동 |
-| v1.0.2 | 2026-05-18 | 통계/리포트 날짜 빠른 선택 버튼 추가 (1개월/3개월/6개월/±1년), UTC+9 날짜 계산 버그 수정 |
-| v1.0.1 | 2026-05-17 | 자동 업데이트 기능 추가, 주행형·고정형 2024년도 데이터 추가 |
-| v1.0.0 | 2026-05-16 | 최초 릴리스 — 지도·통계·리포트·데이터관리·CCTV 관리 |
+| v1.0.2 | 2026-05-18 | 통계/리포트 날짜 빠른 선택 버튼 추가, UTC+9 날짜 계산 버그 수정 |
+| v1.0.1 | 2026-05-17 | 자동 업데이트 기능 추가 |
+| v1.0.0 | 2026-05-16 | 최초 릴리스 |
 
 전체 릴리스 내역은 [GitHub Releases](https://github.com/dpsdkfwl11/namyangju-smart-parking/releases)에서 확인하세요.
 
@@ -267,7 +307,8 @@ namyangju-smart-parking/
 - **동일 버전 재배포 시 자동 업데이트 불가**: 버전 번호가 같으면 electron-updater가 업데이트로 인식하지 않음. 수정 사항이 있으면 반드시 버전을 올려서 배포해야 합니다.
 - **asar 비활성화**: better-sqlite3 네이티브 모듈 호환성을 위해 `asar: false` 설정 사용 중.
 - **혼재 파일 처리**: 고정형·주행형·시민신고가 하나의 Excel 파일에 섞여 있어도 행(Row) 단위로 유형을 판별하여 각각 처리합니다.
-- **어린이보호구역**: 국가교통정보센터 API 실시간 호출 — 인터넷 연결이 필요하며, 경기도(시도코드 41) 데이터를 가져옵니다.
+- **어린이보호구역**: 공공데이터포털 API 실시간 호출 — 인터넷 연결이 필요하며, 남양주시(시군구코드 41360) 데이터를 가져옵니다. 좌표는 EPSG:5181(한국 TM) → WGS84로 변환합니다.
+- **분석 도구**: DB 단속 데이터가 아닌 지도탭에서 수동 업로드한 마커만 분석합니다. 파일 업로드 후 사용하세요.
 
 ---
 

@@ -573,6 +573,162 @@ class IpcHandlers {
         return { success: false, error: e.message };
       }
     });
+
+    // ── 분석 엔진 ────────────────────────────────────────────────────────────
+
+    // A-1. 핫스팟 격자 집계
+    // enforcement 테이블을 ~200m 격자로 묶어 밀도·위험도 반환
+    ipcMain.handle('analysis:getHotspots', (event, params) => {
+      try {
+        const { startDate, endDate, enforcementType, minCount = 3 } = params || {};
+
+        const conds = [
+          'gps_x IS NOT NULL', 'gps_y IS NOT NULL',
+          'gps_x BETWEEN 37.4 AND 38.0',
+          'gps_y BETWEEN 126.8 AND 127.7'
+        ];
+        const args = [];
+        if (startDate)       { conds.push("substr(단속일시,1,10) >= ?"); args.push(startDate); }
+        if (endDate)         { conds.push("substr(단속일시,1,10) <= ?"); args.push(endDate); }
+        if (enforcementType) { conds.push("단속구분 LIKE ?");            args.push(`%${enforcementType}%`); }
+        const where = 'WHERE ' + conds.join(' AND ');
+
+        // 날짜 범위 → 월 평균 계산용
+        const range = this.db.prepare(
+          `SELECT MIN(substr(단속일시,1,10)) AS minDate,
+                  MAX(substr(단속일시,1,10)) AS maxDate
+           FROM enforcement ${where}`
+        ).get(...args);
+
+        // 격자별 집계 (위도 0.0018° ≈ 200m, 경도 0.00227° ≈ 200m @ 37.6°N)
+        const rows = this.db.prepare(`
+          SELECT
+            ROUND(gps_x / 0.0018)   AS grid_lat,
+            ROUND(gps_y / 0.00227)  AS grid_lng,
+            AVG(gps_x)              AS center_lat,
+            AVG(gps_y)              AS center_lng,
+            COUNT(*)                AS total,
+            COUNT(CASE WHEN substr(단속일시,1,10) >= DATE('now','-3 months')  THEN 1 END) AS recent_3m,
+            COUNT(CASE WHEN substr(단속일시,1,10) >= DATE('now','-12 months') THEN 1 END) AS recent_12m
+          FROM enforcement ${where}
+          GROUP BY grid_lat, grid_lng
+          HAVING total >= ?
+          ORDER BY total DESC
+          LIMIT 500
+        `).all(...args, minCount);
+
+        // 전체 기간의 개월 수 산출
+        let months = 1;
+        if (range?.minDate && range?.maxDate) {
+          const d1 = new Date(range.minDate);
+          const d2 = new Date(range.maxDate);
+          months = Math.max(1,
+            (d2.getFullYear() - d1.getFullYear()) * 12 +
+            (d2.getMonth() - d1.getMonth()) + 1
+          );
+        }
+
+        // 위험도 등급 산정 (월 평균 건수 기준)
+        const hotspots = rows.map(r => {
+          const monthly_avg = r.total / months;
+          const risk_level =
+            monthly_avg >= 20 ? 'critical' :
+            monthly_avg >= 10 ? 'high'     :
+            monthly_avg >=  3 ? 'medium'   : 'low';
+          return {
+            ...r,
+            monthly_avg: Math.round(monthly_avg * 10) / 10,
+            risk_level
+          };
+        });
+
+        return { hotspots, months, dateRange: range };
+      } catch (e) {
+        this.log.error('analysis:getHotspots error:', e);
+        return { hotspots: [], months: 1, dateRange: null };
+      }
+    });
+
+    // A-2. 시간·요일·위반 패턴 조회
+    // 특정 격자(gridLat/gridLng) 또는 전체 대상으로 패턴 반환
+    ipcMain.handle('analysis:getTimePattern', (event, params) => {
+      try {
+        const { gridLat, gridLng, startDate, endDate, enforcementType } = params || {};
+
+        const conds = ['gps_x IS NOT NULL', "단속일시 IS NOT NULL AND 단속일시 != ''"];
+        const args  = [];
+
+        if (gridLat != null && gridLng != null) {
+          conds.push('ROUND(gps_x / 0.0018)  = ?');
+          conds.push('ROUND(gps_y / 0.00227) = ?');
+          args.push(gridLat, gridLng);
+        }
+        if (startDate)       { conds.push("substr(단속일시,1,10) >= ?"); args.push(startDate); }
+        if (endDate)         { conds.push("substr(단속일시,1,10) <= ?"); args.push(endDate); }
+        if (enforcementType) { conds.push("단속구분 LIKE ?");            args.push(`%${enforcementType}%`); }
+
+        const where     = 'WHERE ' + conds.join(' AND ');
+        const whereViol = 'WHERE ' + [...conds, "위반법규 IS NOT NULL AND 위반법규 != ''"].join(' AND ');
+
+        const byHour = this.db.prepare(`
+          SELECT CAST(SUBSTR(단속일시, 12, 2) AS INTEGER) AS hour,
+                 COUNT(*) AS cnt
+          FROM enforcement ${where}
+          GROUP BY hour ORDER BY hour
+        `).all(...args);
+
+        // STRFTIME %w : 0=일, 1=월 ... 6=토
+        const byWeekday = this.db.prepare(`
+          SELECT CAST(STRFTIME('%w', 단속일시) AS INTEGER) AS weekday,
+                 COUNT(*) AS cnt
+          FROM enforcement ${where}
+          GROUP BY weekday ORDER BY weekday
+        `).all(...args);
+
+        const byViolation = this.db.prepare(`
+          SELECT 위반법규, COUNT(*) AS cnt
+          FROM enforcement ${whereViol}
+          GROUP BY 위반법규 ORDER BY cnt DESC LIMIT 5
+        `).all(...args);
+
+        // 총 건수 (팝업 표시용)
+        const totalRow = this.db.prepare(
+          `SELECT COUNT(*) AS cnt FROM enforcement ${where}`
+        ).get(...args);
+
+        return {
+          byHour,
+          byWeekday,
+          byViolation,
+          total: totalRow?.cnt ?? 0
+        };
+      } catch (e) {
+        this.log.error('analysis:getTimePattern error:', e);
+        return { byHour: [], byWeekday: [], byViolation: [], total: 0 };
+      }
+    });
+
+    // A-3. 핫스팟 내보내기 (GeoJSON / CSV)
+    ipcMain.handle('analysis:exportFile', async (event, { content, type }) => {
+      try {
+        const date = new Date().toISOString().slice(0, 10);
+        const isGeo = type === 'geojson';
+        const { canceled, filePath } = await dialog.showSaveDialog({
+          title: isGeo ? '핫스팟 GeoJSON 내보내기' : '핫스팟 CSV 내보내기',
+          defaultPath: `핫스팟_남양주시_${date}.${isGeo ? 'geojson' : 'csv'}`,
+          filters: isGeo
+            ? [{ name: 'GeoJSON', extensions: ['geojson', 'json'] }]
+            : [{ name: 'CSV', extensions: ['csv'] }]
+        });
+        if (canceled || !filePath) return { success: false };
+        fs.writeFileSync(filePath, content, 'utf8');
+        this.log.info(`analysis:exportFile → ${filePath}`);
+        return { success: true, path: filePath };
+      } catch (e) {
+        this.log.error('analysis:exportFile error:', e);
+        return { success: false, error: e.message };
+      }
+    });
   }
 }
 

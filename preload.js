@@ -62,6 +62,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     exportPDF: () => ipcRenderer.invoke('report:exportPDF')
   },
 
+  // 분석 엔진
+  analysis: {
+    getHotspots:    (params) => ipcRenderer.invoke('analysis:getHotspots',    params),
+    getTimePattern: (params) => ipcRenderer.invoke('analysis:getTimePattern', params),
+    exportFile:     (opts)   => ipcRenderer.invoke('analysis:exportFile',     opts)
+  },
+
   // 자동 업데이트
   updater: {
     onStatus:      (callback) => ipcRenderer.on('update-status', (_e, data) => callback(data)),

@@ -307,6 +307,47 @@
 
       <div class="sb-divider"></div>
 
+      <!-- ── A-2: 분석 도구 ── -->
+      <div class="sb-section">
+        <div class="sb-section-header">
+          <span class="sb-section-label">분석 도구</span>
+          <span class="sb-badge">Beta</span>
+        </div>
+        <div class="sb-layer-list">
+
+          <!-- 단속 열지도 -->
+          <div class="sb-layer-row" onclick="MapApp?.analysis?.toggleHeatmap?.(this)">
+            <div class="sb-layer-icon" style="background:#fff1f2;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+              </svg>
+            </div>
+            <div class="sb-layer-info">
+              <span class="sb-layer-name">단속 열지도</span>
+              <span class="sb-layer-sub">Heatmap</span>
+            </div>
+            <div class="sb-toggle" id="heatmap-btn" data-layer="heatmap"><div class="sb-toggle-thumb"></div></div>
+          </div>
+
+          <!-- 핫스팟 분석 -->
+          <div class="sb-layer-row" onclick="MapApp?.analysis?.toggleHotspot?.(this)">
+            <div class="sb-layer-icon" style="background:#fef9c3;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </div>
+            <div class="sb-layer-info">
+              <span class="sb-layer-name">핫스팟 분석</span>
+              <span class="sb-layer-sub">위험구역 표시</span>
+            </div>
+            <div class="sb-toggle" id="hotspot-btn" data-layer="hotspot"><div class="sb-toggle-thumb"></div></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="sb-divider"></div>
+
       <!-- ── B: 지도 파일 업로드 (마커 표시용) ── -->
       <div class="sb-section">
         <div class="sb-section-header">
@@ -513,6 +554,55 @@
         <button class="btn btn-secondary btn-sm" onclick="MapApp.spatialStats.clearSelection()">선택 해제</button>
       </div>
     </div>
+
+    <!-- 핫스팟 분석 패널 -->
+    <div id="analysis-panel" style="display:none;position:absolute;top:16px;right:16px;width:300px;max-height:calc(100% - 32px);background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-xl);box-shadow:var(--shadow-xl);backdrop-filter:blur(20px);z-index:600;flex-direction:column;overflow:hidden;">
+      <!-- 헤더 -->
+      <div style="padding:13px 16px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <span style="font-size:13px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:6px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          핫스팟 분석
+        </span>
+        <button onclick="MapApp.analysis.closePanel()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px;padding:2px;line-height:1">✕</button>
+      </div>
+      <!-- 요약 통계 -->
+      <div id="ap-summary" style="padding:10px 16px;border-bottom:1px solid #f1f5f9;flex-shrink:0"></div>
+      <!-- 배지 안내 -->
+      <div style="padding:7px 16px 6px;border-bottom:1px solid #f1f5f9;flex-shrink:0;background:#fafafa">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="background:#fff7ed;color:#ea580c;font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;white-space:nowrap">⚡ 이상</span>
+            <span style="font-size:9px;color:#64748b">다른 구간보다 통계적으로 현저히 높음</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;white-space:nowrap">📈 급증</span>
+            <span style="font-size:9px;color:#64748b">최근 3개월 단속이 이전 대비 2배 이상</span>
+          </div>
+        </div>
+      </div>
+      <!-- 핫스팟 목록 -->
+      <div id="ap-list" style="overflow-y:auto;flex:1;padding:8px;min-height:80px;max-height:310px"></div>
+      <!-- 내보내기 -->
+      <div style="padding:12px 16px;border-top:1px solid #f1f5f9;flex-shrink:0">
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:6px;font-weight:600">내보내기 등급 필터</div>
+        <div style="display:flex;gap:4px;margin-bottom:8px" id="ap-grade-btns">
+          <button onclick="MapApp.analysis.setGradeFilter('all',this)" style="flex:1;padding:4px 0;font-size:10px;border:1px solid #2563eb;border-radius:5px;background:#2563eb;color:#fff;cursor:pointer;font-weight:600">전체</button>
+          <button onclick="MapApp.analysis.setGradeFilter('high',this)" style="flex:1;padding:4px 0;font-size:10px;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc;color:#475569;cursor:pointer">상시+고위험</button>
+          <button onclick="MapApp.analysis.setGradeFilter('critical',this)" style="flex:1;padding:4px 0;font-size:10px;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc;color:#475569;cursor:pointer">상시만</button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="MapApp.analysis.exportGeoJSON()" style="flex:1;padding:7px;font-size:11px;font-weight:600;background:#2563eb;color:#fff;border:none;border-radius:7px;cursor:pointer">GeoJSON</button>
+          <button onclick="MapApp.analysis.exportCSV()" style="flex:1;padding:7px;font-size:11px;font-weight:600;background:#059669;color:#fff;border:none;border-radius:7px;cursor:pointer">CSV</button>
+        </div>
+        <div style="margin-top:8px;border-top:1px solid #f1f5f9;padding-top:8px">
+          <button onclick="MapApp.analysis.openReport()" style="width:100%;padding:7px;font-size:11px;font-weight:600;background:#7c3aed;color:#fff;border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            리포트 작성
+          </button>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <!-- ══ 탭 페이지: 대시보드 ══ -->
@@ -1896,6 +1986,7 @@ class MapApplication {
     this.busLane       = new BusLaneManager(this);
     this.adminBoundary = new AdminBoundaryManager(this);
     this.uploadStats   = new UploadStatsManager(this);
+    this.analysis      = new AnalysisManager(this);
     await this.cctv.init();
   }
 
@@ -3367,6 +3458,724 @@ class ParkingLotManager {
     this.app.state.parkingLotSource.clear();
     this.isVisible = false;
     this.app.showToast('공영주차장 숨김', 'info');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 단속 데이터 분석 (열지도 + 핫스팟)
+// ═══════════════════════════════════════════════════════════════════
+class AnalysisManager {
+  constructor(app) {
+    this.app = app;
+    this._heatLayer    = null;
+    this._hotLayer     = null;
+    this._hotData      = [];
+    this._months       = 1;
+    this._heatVisible  = false;
+    this._panelVisible = false;
+    this._gradeFilter  = 'all';
+    this._clickHandler = null;
+    this._params       = {};
+  }
+
+  // ── 열지도 ──────────────────────────────────────
+  async toggleHeatmap(rowEl) {
+    const toggle = rowEl?.querySelector?.('.sb-toggle') ?? document.getElementById('heatmap-btn');
+    if (this._heatVisible) {
+      this._hideHeat();
+      toggle?.classList.remove('active');
+    } else {
+      const ok = await this._showHeat();
+      if (ok) toggle?.classList.add('active');
+    }
+  }
+
+  async _showHeat() {
+    this.app.showToast('열지도 생성 중...', 'info');
+    const res = this._analyzeMarkers();
+    const hs = res.hotspots;
+    if (!hs.length) { this.app.showToast('지도에 마커가 없습니다. 먼저 파일을 업로드해주세요.', 'warning'); return false; }
+
+    const FILL = { critical:'rgba(239,68,68,', high:'rgba(249,115,22,', medium:'rgba(234,179,8,', low:'rgba(34,197,94,' };
+    const maxAvg = Math.max(1, ...hs.map(h => h.monthly_avg));
+
+    const features = hs.map(h => {
+      const coord = ol.proj.fromLonLat([h.center_lng, h.center_lat]);
+      const alpha = (0.15 + 0.5 * (h.monthly_avg / maxAvg)).toFixed(2);
+      const r = Math.max(14, Math.min(55, Math.log1p(h.total) * 7));
+      const f = new ol.Feature(new ol.geom.Point(coord));
+      f.setStyle(new ol.style.Style({
+        image: new ol.style.Circle({
+          radius: r,
+          fill:   new ol.style.Fill({ color: FILL[h.risk_level] + alpha + ')' }),
+          stroke: new ol.style.Stroke({ color: FILL[h.risk_level] + '0.6)', width: 1 })
+        })
+      }));
+      return f;
+    });
+
+    if (this._heatLayer) this.app.state.map.removeLayer(this._heatLayer);
+    this._heatLayer = new ol.layer.Vector({ source: new ol.source.Vector({ features }), zIndex: 10, opacity: 0.88 });
+    this.app.state.map.addLayer(this._heatLayer);
+    this._heatVisible = true;
+    this.app.showToast(`열지도 표시 (${hs.length}개 구간)`, 'success');
+    return true;
+  }
+
+  _hideHeat() {
+    if (this._heatLayer) { this.app.state.map.removeLayer(this._heatLayer); this._heatLayer = null; }
+    this._heatVisible = false;
+    this.app.showToast('열지도 숨김', 'info');
+  }
+
+  // ── 수동 업로드 마커 분석 (DB 무관, vectorSource 직접) ──
+  _analyzeMarkers() {
+    const src = this.app.state.vectorSource;
+    const features = src ? src.getFeatures() : [];
+
+    const gridMap = new Map();
+    const allDates = [];
+    const now = new Date();
+    const ago3m  = new Date(now.getFullYear(), now.getMonth() - 3,  now.getDate());
+    const ago12m = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
+
+    features.forEach(f => {
+      const geom = f.getGeometry?.();
+      if (!geom) return;
+      const [lng, lat] = ol.proj.toLonLat(geom.getCoordinates());
+      if (!isFinite(lat) || !isFinite(lng)) return;
+      if (lat < 37.4 || lat > 38.0 || lng < 126.8 || lng > 127.7) return;
+
+      const gLat = Math.round(lat / 0.0018);
+      const gLng = Math.round(lng / 0.00227);
+      const key  = gLat + '|' + gLng;
+
+      if (!gridMap.has(key)) gridMap.set(key, { grid_lat: gLat, grid_lng: gLng, lats: [], lngs: [], total: 0, recent_3m: 0, recent_12m: 0, addrCount: {} });
+      const g = gridMap.get(key);
+      g.lats.push(lat); g.lngs.push(lng); g.total++;
+
+      // 날짜 파싱 — 컬럼명 유연하게 시도
+      const info = f.get('info') || {};
+      const rawDate = info['단속일시'] || info['날짜'] || info['일시'] || info['date'] || info['Date'] || '';
+      const dateStr = String(rawDate).slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        allDates.push(dateStr);
+        const d = new Date(dateStr);
+        if (d >= ago3m)  g.recent_3m++;
+        if (d >= ago12m) g.recent_12m++;
+      }
+
+      // 도로명주소 수집 — 가장 많이 등장한 값을 대표 주소로 사용
+      const rawAddr = info['단속장소'] || info['도로명주소'] || info['주소'] || info['단속동'] || '';
+      const addr = String(rawAddr).trim();
+      if (addr) g.addrCount[addr] = (g.addrCount[addr] || 0) + 1;
+    });
+
+    let minDate = null, maxDate = null, months = 1;
+    if (allDates.length) {
+      allDates.sort();
+      minDate = allDates[0];
+      maxDate = allDates[allDates.length - 1];
+      const d1 = new Date(minDate), d2 = new Date(maxDate);
+      months = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+    }
+
+    const hotspots = [];
+    for (const g of gridMap.values()) {
+      if (g.total < 3) continue;
+      const center_lat  = g.lats.reduce((a, b) => a + b, 0) / g.lats.length;
+      const center_lng  = g.lngs.reduce((a, b) => a + b, 0) / g.lngs.length;
+      const monthly_avg = Math.round(g.total / months * 10) / 10;
+      const risk_level  = monthly_avg >= 20 ? 'critical' : monthly_avg >= 10 ? 'high' : monthly_avg >= 3 ? 'medium' : 'low';
+      const address = Object.entries(g.addrCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+      hotspots.push({ grid_lat: g.grid_lat, grid_lng: g.grid_lng, center_lat, center_lng,
+        total: g.total, recent_3m: g.recent_3m, recent_12m: g.recent_12m, monthly_avg, risk_level, address });
+    }
+
+    hotspots.sort((a, b) => b.total - a.total);
+
+    // Phase A: DBSCAN으로 인접 격자 병합
+    let merged = hotspots;
+    try {
+      merged = this._mergeByDBSCAN(hotspots, months);
+    } catch(e) {
+      console.warn('[Analysis] DBSCAN 실패, 격자 방식으로 폴백:', e.message);
+    }
+
+    // Phase B: 이상감지 (Z-score + 추세)
+    let analyzed = merged;
+    try {
+      analyzed = this._detectAnomalies(merged);
+    } catch(e) {
+      console.warn('[Analysis] 이상감지 실패:', e.message);
+      analyzed = merged.map(h => ({ ...h, anomaly: false, trending: false }));
+    }
+
+    return { hotspots: analyzed.slice(0, 500), months, dateRange: minDate ? { minDate, maxDate } : null };
+  }
+
+  // ── Phase A: DBSCAN 헬퍼 ──────────────────────────
+
+  _haversineDist(a, b) {
+    const R = 6371000;
+    const dLat = (b[0] - a[0]) * Math.PI / 180;
+    const dLng = (b[1] - a[1]) * Math.PI / 180;
+    const lat1 = a[0] * Math.PI / 180, lat2 = b[0] * Math.PI / 180;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  }
+
+  _runDBSCAN(points, epsMeters, minPts) {
+    const n = points.length;
+    if (n === 0) return [];
+    const UNVISITED = -1, NOISE = -2;
+    const labels = new Array(n).fill(UNVISITED);
+    let clusterId = 0;
+
+    const getNeighbors = idx => {
+      const nb = [];
+      for (let j = 0; j < n; j++) {
+        if (this._haversineDist(points[idx], points[j]) <= epsMeters) nb.push(j);
+      }
+      return nb;
+    };
+
+    for (let i = 0; i < n; i++) {
+      if (labels[i] !== UNVISITED) continue;
+      const nb = getNeighbors(i);
+      if (nb.length < minPts) { labels[i] = NOISE; continue; }
+      labels[i] = clusterId;
+      const seeds = new Set(nb);
+      seeds.delete(i);
+      for (const q of seeds) {
+        if (labels[q] === NOISE) labels[q] = clusterId;
+        if (labels[q] !== UNVISITED) continue;
+        labels[q] = clusterId;
+        const qNb = getNeighbors(q);
+        if (qNb.length >= minPts) qNb.forEach(nb => seeds.add(nb));
+      }
+      clusterId++;
+    }
+
+    const clusters = Array.from({ length: clusterId }, () => []);
+    labels.forEach((lbl, i) => { if (lbl >= 0) clusters[lbl].push(i); });
+    return clusters;
+  }
+
+  _mergeByDBSCAN(hotspots, months) {
+    if (hotspots.length === 0) return hotspots;
+    const points = hotspots.map(h => [h.center_lat, h.center_lng]);
+    // eps=250m: 200m 격자 경계를 넘어 인접 셀 병합, minPts=1: 단독 셀도 클러스터 유지
+    const clusters = this._runDBSCAN(points, 250, 1);
+    if (!clusters.length) return hotspots;
+
+    return clusters.map(indices => {
+      const members = indices.map(i => hotspots[i]);
+      const total      = members.reduce((s, h) => s + h.total,      0);
+      const recent_3m  = members.reduce((s, h) => s + h.recent_3m,  0);
+      const recent_12m = members.reduce((s, h) => s + h.recent_12m, 0);
+      const center_lat = members.reduce((s, h) => s + h.center_lat * h.total, 0) / total;
+      const center_lng = members.reduce((s, h) => s + h.center_lng * h.total, 0) / total;
+      const monthly_avg = Math.round(total / months * 10) / 10;
+      const risk_level  = monthly_avg >= 20 ? 'critical' : monthly_avg >= 10 ? 'high' : monthly_avg >= 3 ? 'medium' : 'low';
+      // 병합된 셀 중 가장 건수가 많은 셀의 주소를 대표 주소로 사용
+      const address = members.sort((a, b) => b.total - a.total)[0]?.address || '';
+      return {
+        grid_lat: Math.round(center_lat * 100000) / 100000,
+        grid_lng: Math.round(center_lng * 100000) / 100000,
+        center_lat, center_lng, total, recent_3m, recent_12m, monthly_avg, risk_level, address
+      };
+    }).sort((a, b) => b.total - a.total);
+  }
+
+  // ── Phase B: 이상감지 ─────────────────────────────
+
+  _detectAnomalies(hotspots) {
+    if (hotspots.length < 4) return hotspots.map(h => ({ ...h, anomaly: false, trending: false }));
+
+    // Z-score: 전체 핫스팟 중 통계적 이상치 탐지
+    const avgs = hotspots.map(h => h.monthly_avg);
+    const mean = avgs.reduce((a, b) => a + b, 0) / avgs.length;
+    const std  = Math.sqrt(avgs.reduce((s, v) => s + (v - mean) ** 2, 0) / avgs.length);
+
+    return hotspots.map(h => {
+      const zScore = std > 0 ? (h.monthly_avg - mean) / std : 0;
+      // 추세: 최근 3개월 vs 직전 9개월 분기 평균 비율
+      const histQtrAvg  = h.recent_12m > 0 ? (h.recent_12m - h.recent_3m) / 3 : 0;
+      const trendRatio  = histQtrAvg  > 0 ? h.recent_3m / histQtrAvg : 0;
+      return {
+        ...h,
+        anomaly:    zScore > 2.5,
+        trending:   trendRatio > 2.0 && h.recent_3m >= 5,
+        zScore:     Math.round(zScore * 10) / 10,
+        trendRatio: Math.round(trendRatio * 10) / 10
+      };
+    });
+  }
+
+  // ── 핫스팟 분석 패널 ──────────────────────────────
+  async toggleHotspot(rowEl) {
+    const toggle = rowEl?.querySelector?.('.sb-toggle') ?? document.getElementById('hotspot-btn');
+    if (this._panelVisible) {
+      this.closePanel();
+      toggle?.classList.remove('active');
+    } else {
+      const ok = await this._loadAndShowPanel();
+      if (ok) toggle?.classList.add('active');
+    }
+  }
+
+  async _loadAndShowPanel() {
+    this.app.showToast('핫스팟 분석 중...', 'info');
+    const res = this._analyzeMarkers();
+    this._hotData = res.hotspots;
+    this._months  = res.months;
+    if (!this._hotData.length) { this.app.showToast('지도에 마커가 없습니다. 먼저 파일을 업로드해주세요.', 'warning'); return false; }
+
+    this._renderHotCircles();
+    this._renderPanel(res);
+
+    this._clickHandler = evt => this._onMapClick(evt);
+    this.app.state.map.on('singleclick', this._clickHandler);
+
+    this._panelVisible = true;
+    this.app.showToast(`핫스팟 ${this._hotData.length}개 구간 분석 완료`, 'success');
+    return true;
+  }
+
+  _renderHotCircles() {
+    const FILL   = { critical:'rgba(239,68,68,0.20)', high:'rgba(249,115,22,0.17)', medium:'rgba(234,179,8,0.14)', low:'rgba(34,197,94,0.11)' };
+    const STROKE = { critical:'#ef4444', high:'#f97316', medium:'#ca8a04', low:'#16a34a' };
+
+    const features = this._hotData.map((h, idx) => {
+      const coord = ol.proj.fromLonLat([h.center_lng, h.center_lat]);
+      const r = Math.max(10, Math.min(44, Math.log1p(h.total) * 6.5));
+      const f = new ol.Feature({ geometry: new ol.geom.Point(coord), _idx: idx });
+      f.setStyle(new ol.style.Style({
+        image: new ol.style.Circle({
+          radius: r,
+          fill:   new ol.style.Fill({ color: FILL[h.risk_level] }),
+          stroke: new ol.style.Stroke({ color: STROKE[h.risk_level], width: 2 })
+        })
+      }));
+      return f;
+    });
+
+    if (this._hotLayer) this.app.state.map.removeLayer(this._hotLayer);
+    this._hotLayer = new ol.layer.Vector({ source: new ol.source.Vector({ features }), zIndex: 15 });
+    this.app.state.map.addLayer(this._hotLayer);
+  }
+
+  _renderPanel(res) {
+    const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+    this._hotData.forEach(h => counts[h.risk_level]++);
+    const minD = res?.dateRange?.minDate?.slice(0, 7) || '—';
+    const maxD = res?.dateRange?.maxDate?.slice(0, 7) || '—';
+
+    document.getElementById('ap-summary').innerHTML =
+      `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">` +
+        `<span style="font-size:10px;color:#94a3b8">${minD} ~ ${maxD} (${this._months}개월)</span>` +
+        `<span style="font-size:11px;font-weight:700;color:#1e293b">총 ${this._hotData.length}개 구간</span>` +
+      `</div>` +
+      `<div style="display:flex;gap:5px;flex-wrap:wrap">` +
+        `<span style="background:#fee2e2;color:#ef4444;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px">🔴 ${counts.critical}</span>` +
+        `<span style="background:#ffedd5;color:#f97316;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px">🟠 ${counts.high}</span>` +
+        `<span style="background:#fef9c3;color:#ca8a04;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px">🟡 ${counts.medium}</span>` +
+        `<span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px">🟢 ${counts.low}</span>` +
+      `</div>`;
+
+    this._renderList();
+    document.getElementById('analysis-panel').style.display = 'flex';
+  }
+
+  _renderList() {
+    const GRADE_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+    const filtered = this._gradeFilter === 'critical' ? this._hotData.filter(h => h.risk_level === 'critical')
+                   : this._gradeFilter === 'high'     ? this._hotData.filter(h => h.risk_level === 'critical' || h.risk_level === 'high')
+                   : [...this._hotData].sort((a, b) => GRADE_ORDER[a.risk_level] - GRADE_ORDER[b.risk_level]);
+
+    const LABEL = { critical:'상시단속', high:'고위험', medium:'주의', low:'보통' };
+    const COLOR = { critical:'#ef4444', high:'#f97316', medium:'#ca8a04', low:'#16a34a' };
+    const BG    = { critical:'#fee2e2', high:'#ffedd5', medium:'#fef9c3', low:'#dcfce7' };
+    const EMOJI = { critical:'🔴', high:'🟠', medium:'🟡', low:'🟢' };
+
+    document.getElementById('ap-list').innerHTML = filtered.length === 0
+      ? `<div style="text-align:center;color:#94a3b8;font-size:12px;padding:24px">해당 등급 데이터 없음</div>`
+      : filtered.map((h, i) =>
+          `<div onclick="MapApp.analysis.flyToHotspot(${h.grid_lat},${h.grid_lng})" ` +
+            `style="padding:9px 10px;border-radius:8px;background:#f8fafc;margin-bottom:3px;cursor:pointer;border:1px solid transparent;transition:all 150ms" ` +
+            `onmouseover="this.style.background='#f1f5f9';this.style.borderColor='#e2e8f0'" ` +
+            `onmouseout="this.style.background='#f8fafc';this.style.borderColor='transparent'">` +
+            `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">` +
+              `<div style="display:flex;align-items:center;gap:4px">` +
+                `<span style="background:${BG[h.risk_level]};color:${COLOR[h.risk_level]};font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px">${EMOJI[h.risk_level]} ${LABEL[h.risk_level]}</span>` +
+                (h.anomaly  ? `<span style="background:#fff7ed;color:#ea580c;font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px">⚡ 이상</span>` : '') +
+                (h.trending ? `<span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px">📈 급증</span>` : '') +
+              `</div>` +
+              `<span style="font-size:10px;color:#94a3b8">#${i + 1}</span>` +
+            `</div>` +
+            `<div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b">` +
+              `<span><b style="color:#1e293b">${h.total.toLocaleString()}</b> 누적</span>` +
+              `<span><b style="color:${COLOR[h.risk_level]}">${h.monthly_avg}</b> 월평균</span>` +
+              `<span><b style="color:#1e293b">${h.recent_3m.toLocaleString()}</b> 3개월</span>` +
+            `</div>` +
+          `</div>`
+        ).join('');
+  }
+
+  _onMapClick(evt) {
+    let found = null;
+    this.app.state.map.forEachFeatureAtPixel(evt.pixel, (f, layer) => {
+      if (layer === this._hotLayer && found === null) found = f;
+    });
+    if (found !== null) this.flyToHotspot(this._hotData[found.get('_idx')]?.grid_lat, this._hotData[found.get('_idx')]?.grid_lng);
+  }
+
+  flyToHotspot(gridLat, gridLng) {
+    const h = this._hotData.find(x => x.grid_lat === gridLat && x.grid_lng === gridLng);
+    if (h) this.app.moveToLocation(h.center_lng, h.center_lat, 16);
+  }
+
+  setGradeFilter(grade, btn) {
+    this._gradeFilter = grade;
+    document.querySelectorAll('#ap-grade-btns button').forEach(b => {
+      b.style.background = '#f8fafc'; b.style.color = '#475569'; b.style.borderColor = '#e2e8f0';
+    });
+    btn.style.background = '#2563eb'; btn.style.color = '#fff'; btn.style.borderColor = '#2563eb';
+    this._renderList();
+  }
+
+  closePanel() {
+    document.getElementById('analysis-panel').style.display = 'none';
+    if (this._hotLayer) { this.app.state.map.removeLayer(this._hotLayer); this._hotLayer = null; }
+    if (this._clickHandler) { this.app.state.map.un('singleclick', this._clickHandler); this._clickHandler = null; }
+    this._panelVisible = false;
+    const t = document.getElementById('hotspot-btn'); t?.classList.remove('active');
+    this.app.showToast('핫스팟 분석 종료', 'info');
+  }
+
+  // ── Phase 3: 내보내기 ──────────────────────────────
+  _filteredForExport() {
+    if (this._gradeFilter === 'critical') return this._hotData.filter(h => h.risk_level === 'critical');
+    if (this._gradeFilter === 'high')     return this._hotData.filter(h => h.risk_level === 'critical' || h.risk_level === 'high');
+    return this._hotData;
+  }
+
+  _buildNavMsg(h) {
+    if (h.monthly_avg >= 20) return `해당 구역은 상시 단속 구간으로 최근 3개월간 ${h.recent_3m}건이 단속된 지역입니다. 불법 주차 대신 인근 주차장을 이용해 주세요.`;
+    if (h.recent_3m  >   0) return `이 구역은 집중 단속 구간입니다. (최근 3개월 ${h.recent_3m}건 단속)`;
+    return `단속 이력이 있는 구역입니다. 누적 ${h.total.toLocaleString()}건 단속.`;
+  }
+
+  async exportGeoJSON() {
+    const data = this._filteredForExport();
+    if (!data.length) { this.app.showToast('내보낼 데이터가 없습니다', 'warning'); return; }
+    const geojson = JSON.stringify({
+      type: 'FeatureCollection',
+      metadata: { source: '남양주시 스마트주정차', generated_at: new Date().toISOString().slice(0, 10), total_zones: data.length },
+      features: data.map((h, i) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [h.center_lng, h.center_lat] },
+        properties: {
+          id: 'NMY-' + String(i + 1).padStart(3, '0'),
+          risk_level: h.risk_level,
+          total_count: h.total,
+          recent_3m: h.recent_3m,
+          monthly_avg: h.monthly_avg,
+          radius_m: 200,
+          alert_message: this._buildNavMsg(h)
+        }
+      }))
+    }, null, 2);
+    const res = await window.electronAPI.analysis.exportFile({ content: geojson, type: 'geojson' }).catch(() => null);
+    if (res?.success) this.app.showToast(`GeoJSON 저장 완료 (${data.length}개)`, 'success');
+    else if (res) this.app.showToast('저장 취소됨', 'info');
+  }
+
+  async exportCSV() {
+    const data = this._filteredForExport();
+    if (!data.length) { this.app.showToast('내보낼 데이터가 없습니다', 'warning'); return; }
+    const header = '순위,위험등급,위도,경도,누적건수,최근3개월,월평균,알림메시지';
+    const rows = data.map((h, i) =>
+      [i + 1, h.risk_level, h.center_lat.toFixed(6), h.center_lng.toFixed(6),
+       h.total, h.recent_3m, h.monthly_avg, '"' + this._buildNavMsg(h).replace(/"/g, '""') + '"'].join(',')
+    );
+    const csv = '﻿' + header + '\n' + rows.join('\n');
+    const res = await window.electronAPI.analysis.exportFile({ content: csv, type: 'csv' }).catch(() => null);
+    if (res?.success) this.app.showToast(`CSV 저장 완료 (${data.length}개)`, 'success');
+    else if (res) this.app.showToast('저장 취소됨', 'info');
+  }
+
+  // ── 리포트 ────────────────────────────────────────
+
+  async openReport() {
+    const data = this._filteredForExport();
+    if (!data.length) { this.app.showToast('분석된 핫스팟이 없습니다. 먼저 핫스팟 분석을 실행해주세요.', 'warning'); return; }
+
+    document.getElementById('hs-report-overlay')?.remove();
+    this.app.showToast('리포트 생성 중...', 'info');
+
+    // 지도 캡처
+    let mapDataURL = null;
+    try {
+      const mapEl = document.getElementById('map-container');
+      if (mapEl && window.electronAPI?.settings?.captureMap) {
+        const r = mapEl.getBoundingClientRect();
+        mapDataURL = await window.electronAPI.settings.captureMap(
+          { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
+        );
+      }
+    } catch(_) {}
+
+    const dateStr     = new Date().toLocaleDateString('ko-KR');
+    const counts      = { critical: 0, high: 0, medium: 0, low: 0 };
+    data.forEach(h => counts[h.risk_level]++);
+    const anomalyCnt  = data.filter(h => h.anomaly).length;
+    const trendingCnt = data.filter(h => h.trending).length;
+    const totalMarkers = data.reduce((s, h) => s + h.total, 0);
+
+    const LABEL = { critical:'상시단속', high:'고위험', medium:'주의', low:'보통' };
+    const COLOR = { critical:'#ef4444', high:'#f97316', medium:'#eab308', low:'#22c55e' };
+    const BG    = { critical:'#fee2e2', high:'#ffedd5', medium:'#fef9c3', low:'#dcfce7' };
+
+    const ROWS_PER_PAGE = 25;
+    const chunks = [];
+    for (let i = 0; i < data.length; i += ROWS_PER_PAGE) chunks.push(data.slice(i, i + ROWS_PER_PAGE));
+    if (!chunks.length) chunks.push([]);
+    const totalPages = chunks.length + 1;
+
+    // ── 1페이지 ──
+    const paper1 = `
+      <div class="report-paper visible">
+        <div class="rp-header">
+          <div class="rp-header-left">
+            <div class="rp-org">남양주시 주차관리과</div>
+            <div class="rp-title">핫스팟 단속 구간 분석 보고서</div>
+            <div class="rp-subtitle">수동 업로드 마커 기준 · ${this._months}개월 분석</div>
+          </div>
+          <div class="rp-header-right">
+            <div>출력일자: <strong>${dateStr}</strong></div>
+            <div>분석 구간: <strong>${data.length}개소</strong></div>
+            <div>총 단속건수: <strong>${totalMarkers.toLocaleString()}건</strong></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+          <div style="background:#fee2e2;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#ef4444">${counts.critical}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🔴 상시단속</div>
+          </div>
+          <div style="background:#ffedd5;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#f97316">${counts.high}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🟠 고위험</div>
+          </div>
+          <div style="background:#fef9c3;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#ca8a04">${counts.medium}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🟡 주의</div>
+          </div>
+          <div style="background:#dcfce7;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#16a34a">${counts.low}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🟢 보통</div>
+          </div>
+        </div>
+
+        ${(anomalyCnt > 0 || trendingCnt > 0) ? `
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:#92400e">이상감지 결과</span>
+          ${anomalyCnt  > 0 ? `<span style="background:#fff7ed;color:#ea580c;font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px">⚡ 이상 ${anomalyCnt}구간</span>` : ''}
+          ${trendingCnt > 0 ? `<span style="background:#fef2f2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px">📈 급증 ${trendingCnt}구간</span>` : ''}
+          <span style="font-size:10px;color:#94a3b8">— 즉각적인 현장 점검 권고</span>
+        </div>` : ''}
+
+        ${mapDataURL ? `
+        <div class="rp-section-title">현황 지도</div>
+        <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;margin-bottom:14px">
+          <img src="${mapDataURL}" style="width:100%;display:block;max-height:320px;object-fit:cover;object-position:center" alt="핫스팟 현황 지도">
+        </div>` : ''}
+
+        <div class="rp-section-title">위험등급 분포 및 월평균 상위 구간</div>
+        <div class="rp-chart-row">
+          <div class="rp-chart-box" style="flex:0.85">
+            <div class="rp-chart-box-title">위험등급 분포</div>
+            <div style="position:relative;height:175px"><canvas id="hs-rp-donut"></canvas></div>
+          </div>
+          <div class="rp-chart-box" style="flex:1.15">
+            <div class="rp-chart-box-title">월평균 상위 10구간</div>
+            <div style="position:relative;height:200px"><canvas id="hs-rp-bar"></canvas></div>
+          </div>
+        </div>
+
+        <div class="rp-footer">
+          <span>남양주시 스마트 주정차 관리 시스템</span>
+          <span>${dateStr} 기준 · 1/${totalPages}페이지</span>
+        </div>
+      </div>`;
+
+    // ── 2페이지~ ──
+    const maxTotal = data[0]?.total || 1;
+    const tablePages = chunks.map((chunk, idx) => {
+      const pageNum   = idx + 2;
+      const startRank = idx * ROWS_PER_PAGE + 1;
+      const rows = chunk.map((h, i) => {
+        const barW = Math.round(h.total / maxTotal * 100);
+        const badges = (h.anomaly  ? `<span style="color:#ea580c;font-weight:700">⚡</span>` : '') +
+                       (h.trending ? `<span style="color:#dc2626;font-weight:700">📈</span>` : '');
+        return `<tr>
+          <td style="text-align:center;color:#94a3b8;font-weight:700">${startRank + i}</td>
+          <td><span style="background:${BG[h.risk_level]};color:${COLOR[h.risk_level]};font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px">${LABEL[h.risk_level]}</span></td>
+          <td style="font-size:10px;color:#334155">${h.address || `${h.center_lat.toFixed(4)}, ${h.center_lng.toFixed(4)}`}</td>
+          <td style="text-align:right;font-weight:700">${h.total.toLocaleString()}</td>
+          <td style="text-align:right">${h.recent_3m.toLocaleString()}</td>
+          <td style="text-align:right;color:${COLOR[h.risk_level]};font-weight:700">${h.monthly_avg}</td>
+          <td style="text-align:center;font-size:12px">${badges || '—'}</td>
+        </tr>`;
+      }).join('');
+      return `
+        <div class="report-paper visible">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1.5px solid #1e293b;margin-bottom:20px">
+            <div style="font-size:14px;font-weight:800;color:#0f172a">핫스팟 단속 구간 분석 보고서 — 전체 목록</div>
+            <div style="font-size:11px;color:#64748b">${dateStr} · ${pageNum}/${totalPages}페이지</div>
+          </div>
+          <div class="rp-section-title">핫스팟 전체 현황 (${startRank}~${startRank + chunk.length - 1}위)</div>
+          <table class="rp-table">
+            <thead><tr>
+              <th style="width:36px;text-align:center">순위</th>
+              <th style="width:58px">등급</th>
+              <th>단속장소</th>
+              <th style="width:52px;text-align:right">누적</th>
+              <th style="width:52px;text-align:right">3개월</th>
+              <th style="width:48px;text-align:right">월평균</th>
+              <th style="width:32px;text-align:center">이상</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="rp-footer">
+            <span>남양주시 스마트 주정차 관리 시스템</span>
+            <span>${dateStr} 기준 · ${pageNum}/${totalPages}페이지</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    // ── 오버레이 조립 ──
+    const overlay = document.createElement('div');
+    overlay.id = 'hs-report-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9800;background:rgba(15,23,42,0.85);backdrop-filter:blur(8px);overflow-y:auto;';
+    overlay.innerHTML = `
+      <div id="hs-report-inner" style="width:794px;max-width:100%;margin:0 auto;padding:32px 0 64px;display:flex;flex-direction:column;gap:16px;">
+        <div id="hs-report-controls" style="position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border-radius:12px;padding:12px 20px;border:1px solid var(--border-color);gap:12px;box-shadow:0 4px 24px rgba(0,0,0,0.3);">
+          <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
+            핫스팟 분석 리포트 — ${data.length}개 구간 · 총 ${totalPages}페이지
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <button onclick="MapApp.analysis.printReport()" style="padding:8px 18px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">PDF 출력</button>
+            <button onclick="document.getElementById('hs-report-overlay')?.remove()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer">닫기</button>
+          </div>
+        </div>
+        ${paper1}
+        ${tablePages}
+      </div>`;
+
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+    // ── 차트 렌더링 ──
+    const donutCtx = document.getElementById('hs-rp-donut');
+    if (donutCtx && typeof Chart !== 'undefined') {
+      const donutTotal = counts.critical + counts.high + counts.medium + counts.low;
+      // 각 슬라이스 위에 건수 + 비율 표시하는 인라인 플러그인
+      const sliceLabelPlugin = {
+        id: 'hsSliceLabels',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+          if (!total) return;
+          chart.getDatasetMeta(0).data.forEach((arc, i) => {
+            const val = data.datasets[0].data[i];
+            if (!val) return;
+            const pct = Math.round(val / total * 100);
+            if (pct < 4) return; // 너무 작은 슬라이스는 생략
+            const mid = (arc.startAngle + arc.endAngle) / 2;
+            const r   = (arc.innerRadius + arc.outerRadius) / 2;
+            const x   = arc.x + r * Math.cos(mid);
+            const y   = arc.y + r * Math.sin(mid);
+            ctx.save();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`${val}`, x, y - 6);
+            ctx.font = '9px sans-serif';
+            ctx.fillText(`${pct}%`, x, y + 6);
+            ctx.restore();
+          });
+        }
+      };
+      new Chart(donutCtx, {
+        type: 'doughnut',
+        plugins: [sliceLabelPlugin],
+        data: {
+          labels: ['상시단속', '고위험', '주의', '보통'],
+          datasets: [{ data: [counts.critical, counts.high, counts.medium, counts.low],
+            backgroundColor: ['#ef4444','#f97316','#eab308','#22c55e'], borderWidth: 0 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                font: { size: 10 }, boxWidth: 10, padding: 8,
+                generateLabels(chart) {
+                  const d = chart.data;
+                  return d.labels.map((lbl, i) => ({
+                    text: `${lbl}  ${d.datasets[0].data[i]}개`,
+                    fillStyle: d.datasets[0].backgroundColor[i],
+                    strokeStyle: 'transparent', lineWidth: 0,
+                    hidden: false, index: i
+                  }));
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    const barCtx = document.getElementById('hs-rp-bar');
+    if (barCtx && typeof Chart !== 'undefined') {
+      const top10 = [...data].sort((a, b) => b.monthly_avg - a.monthly_avg).slice(0, 10);
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: top10.map((h, i) => {
+            const lbl = h.address || `${h.center_lat.toFixed(4)}, ${h.center_lng.toFixed(4)}`;
+            return `#${i + 1}  ${lbl.length > 20 ? lbl.slice(0, 20) + '…' : lbl}`;
+          }),
+          datasets: [{
+            data: top10.map(h => h.monthly_avg),
+            backgroundColor: top10.map(h => COLOR[h.risk_level]),
+            borderRadius: 3, borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 9 } },
+                 title: { display: true, text: '월평균 건수', font: { size: 9 }, color: '#94a3b8' } },
+            y: { ticks: { color: '#475569', font: { size: 9 }, autoSkip: false, maxRotation: 0 } }
+          }
+        }
+      });
+    }
+  }
+
+  printReport() {
+    const overlay = document.getElementById('hs-report-overlay');
+    if (!overlay) { this.app.showToast('리포트를 먼저 열어주세요', 'warning'); return; }
+    document.body.classList.add('hs-report-print');
+    window.electronAPI.report.exportPDF()
+      .catch(() => this.app.showToast('PDF 출력 중 오류가 발생했습니다', 'error'))
+      .finally(() => document.body.classList.remove('hs-report-print'));
   }
 }
 
@@ -6297,6 +7106,30 @@ window.SidebarUI = SidebarUI;
 <script>
 const PatchNotes = (() => {
   const DATA = [
+    {
+      version: '1.1.0',
+      date: '2026-05-29',
+      highlights: [
+        '지도탭 단속 분석 도구 신규 추가 — 수동 업로드 마커를 DB와 무관하게 실시간 분석',
+        '단속 열지도 — 밀집도 기반 색상 오버레이 (위험등급별 빨강→초록)',
+        '핫스팟 분석 패널 — 상시단속·고위험·주의·보통 등급별 구간 목록 표시',
+        'DBSCAN 클러스터링 적용 — 격자 경계 분리 문제 해소, 자연스러운 단속 군집 탐지',
+        'Z-score 이상감지 — ⚡이상(통계적 이상치) · 📈급증(최근 3개월 2배↑) 자동 배지',
+        'GeoJSON / CSV 내보내기 — 네비게이션 플랫폼(Tmap·네이버·카카오) 제출용 포맷',
+        '핫스팟 분석 리포트 — A4 PDF, 위험등급 분포 도넛차트, 상위 10구간 바차트, 전체 목록 테이블',
+        '리포트 단속장소 표기 — 위도/경도 대신 도로명주소로 직관적 표시'
+      ]
+    },
+    {
+      version: '1.0.9',
+      date: '2026-05-22',
+      highlights: [
+        '공영주차장 레이어 추가 — 남양주시 공영주차장 위치 파란 P 마커로 표시',
+        '어린이보호구역 API 교체 — 공공데이터포털 API 연동, EPSG:5181 좌표 자동 변환',
+        '탄력운영구간 폴리곤 색상 파란색으로 변경 (기존 노란색에서 도로 가시성 개선)',
+        '대시보드 단속 현황 헤더 문구 정리'
+      ]
+    },
     {
       version: '1.0.8',
       date: '2026-05-19',
