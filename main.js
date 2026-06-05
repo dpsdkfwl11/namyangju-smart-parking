@@ -1,8 +1,29 @@
 const { app, BrowserWindow, screen, dialog, ipcMain } = require('electron');
 const path = require('path');
+const fs   = require('fs');
 const IpcHandlers   = require('./src/ipc/handlers');
 const Logger        = require('./src/logger');
 const WindowState   = require('./src/window-state');
+
+// config.json에서 VWorld API 키 읽기 (없으면 빈 문자열)
+function loadVworldKey() {
+  try {
+    const cfgPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(cfgPath)) return '';
+    return JSON.parse(fs.readFileSync(cfgPath, 'utf8')).vworldApiKey || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+// index.html의 __VWORLD_KEY__ 플레이스홀더를 실제 키로 교체한 파일 생성
+function buildIndexHtml(apiKey) {
+  const src = path.join(__dirname, 'renderer', 'index.html');
+  const dst = path.join(__dirname, 'renderer', 'index-generated.html');
+  const html = fs.readFileSync(src, 'utf8').replace(/__VWORLD_KEY__/g, apiKey);
+  fs.writeFileSync(dst, html, 'utf8');
+  return dst;
+}
 // autoUpdater는 app.isPackaged 환경에서만 lazy-require (6.8.x 이상: require 시점에 app.getVersion() 호출)
 let autoUpdater = null;
 
@@ -39,7 +60,8 @@ function createWindow () {
     try { winState?.save(mainWindow); } catch (_) {}
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  const indexPath = buildIndexHtml(loadVworldKey());
+  mainWindow.loadFile(indexPath);
 
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();
