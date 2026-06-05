@@ -5,22 +5,24 @@ const IpcHandlers   = require('./src/ipc/handlers');
 const Logger        = require('./src/logger');
 const WindowState   = require('./src/window-state');
 
-// config.json에서 VWorld API 키 읽기 (없으면 빈 문자열)
-function loadVworldKey() {
+// config.json에서 API 키 읽기
+function loadConfig() {
   try {
     const cfgPath = path.join(__dirname, 'config.json');
-    if (!fs.existsSync(cfgPath)) return '';
-    return JSON.parse(fs.readFileSync(cfgPath, 'utf8')).vworldApiKey || '';
+    if (!fs.existsSync(cfgPath)) return {};
+    return JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   } catch (e) {
-    return '';
+    return {};
   }
 }
 
-// index.html의 __VWORLD_KEY__ 플레이스홀더를 실제 키로 교체한 파일 생성
-function buildIndexHtml(apiKey) {
+// index.html의 플레이스홀더를 실제 키로 교체한 파일 생성
+function buildIndexHtml(cfg) {
   const src = path.join(__dirname, 'renderer', 'index.html');
   const dst = path.join(__dirname, 'renderer', 'index-generated.html');
-  const html = fs.readFileSync(src, 'utf8').replace(/__VWORLD_KEY__/g, apiKey);
+  const html = fs.readFileSync(src, 'utf8')
+    .replace(/__VWORLD_KEY__/g, cfg.vworldApiKey || '')
+    .replace(/__PUBLIC_DATA_KEY__/g, cfg.publicDataServiceKey || '');
   fs.writeFileSync(dst, html, 'utf8');
   return dst;
 }
@@ -60,7 +62,7 @@ function createWindow () {
     try { winState?.save(mainWindow); } catch (_) {}
   });
 
-  const indexPath = buildIndexHtml(loadVworldKey());
+  const indexPath = buildIndexHtml(loadConfig());
   mainWindow.loadFile(indexPath);
 
   if (process.argv.includes('--dev')) {
