@@ -1,6 +1,7 @@
 const { app, BrowserWindow, screen, dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs   = require('fs');
+const { pathToFileURL } = require('url');
 const IpcHandlers   = require('./src/ipc/handlers');
 const Logger        = require('./src/logger');
 const WindowState   = require('./src/window-state');
@@ -17,12 +18,20 @@ function loadConfig() {
 }
 
 // index.html의 플레이스홀더를 실제 키로 교체한 파일 생성
+// 주의: 설치본의 앱 폴더(resources/app)는 읽기전용일 수 있으므로 반드시
+//       쓰기 가능한 userData에 생성한다. 상대경로(css/, ../static/)가 깨지지
+//       않도록 <base>로 기준 경로를 실제 renderer 폴더로 고정한다.
 function buildIndexHtml(cfg) {
-  const src = path.join(__dirname, 'renderer', 'index.html');
-  const dst = path.join(__dirname, 'renderer', 'index-generated.html');
-  const html = fs.readFileSync(src, 'utf8')
+  const rendererDir = path.join(__dirname, 'renderer');
+  const src = path.join(rendererDir, 'index.html');
+  let html = fs.readFileSync(src, 'utf8')
     .replace(/__VWORLD_KEY__/g, cfg.vworldApiKey || '')
     .replace(/__PUBLIC_DATA_KEY__/g, cfg.publicDataServiceKey || '');
+
+  const baseHref = pathToFileURL(rendererDir + path.sep).href;
+  html = html.replace('<head>', `<head>\n  <base href="${baseHref}">`);
+
+  const dst = path.join(app.getPath('userData'), 'index-generated.html');
   fs.writeFileSync(dst, html, 'utf8');
   return dst;
 }
@@ -47,6 +56,7 @@ function createWindow () {
     width: 1280,
     height: 800,
     ...savedOpts,
+    icon: path.join(__dirname, 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
