@@ -1468,21 +1468,14 @@
 }
 .report-paper.visible { display: block; }
 
-/* 용지 헤더 */
-.rp-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 28px;
-  padding-bottom: 16px;
-  border-bottom: 2.5px solid #1e293b;
-}
-.rp-header-left {}
-.rp-org { font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
-.rp-title { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2; margin-bottom: 4px; }
-.rp-subtitle { font-size: 13px; color: #475569; font-weight: 500; }
-.rp-header-right { text-align: right; font-size: 11px; color: #64748b; line-height: 1.8; }
-.rp-header-right strong { color: #1e293b; font-weight: 700; }
+/* 용지 헤더 - 공문서 스타일 */
+.rp-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.rp-date-line { text-align: right; font-size: 12px; color: #374151; margin-bottom: 14px; }
+.rp-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #0f172a; line-height: 1.3; }
+.rp-overview { margin-bottom: 18px; }
+.rp-overview-label { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 5px; }
+.rp-overview-row { font-size: 13px; color: #1e293b; line-height: 1.8; padding-left: 16px; }
+.rp-bullet { font-size: 13px; color: #1e293b; padding: 3px 0 3px 8px; line-height: 1.7; margin-bottom: 4px; }
 
 /* KPI 카드 4열 */
 .rp-kpi-row {
@@ -1504,25 +1497,17 @@
 .rp-kpi-card--primary { border-color: #3b82f6; background: #eff6ff; }
 .rp-kpi-card--primary .rp-kpi-value { color: #1d4ed8; }
 
-/* 섹션 구분선+제목 */
+/* 섹션 번호 제목 - 공문서 스타일 */
 .rp-section-title {
-  font-size: 12px;
-  font-weight: 800;
-  color: #1e293b;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  margin: 22px 0 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 20px 0 8px;
+  display: block;
+  letter-spacing: 0;
+  text-transform: none;
 }
-.rp-section-title::before {
-  content: '';
-  width: 4px; height: 14px;
-  background: #3b82f6;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
+.rp-section-title::before { display: none; }
 
 /* 차트 2열 그리드 */
 .rp-chart-row {
@@ -1532,18 +1517,15 @@
   margin-bottom: 8px;
 }
 .rp-chart-box {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border: 0.5px solid #94a3b8;
   padding: 12px 14px;
   background: #f8fafc;
 }
 .rp-chart-box-title {
   font-size: 11px;
   font-weight: 700;
-  color: #64748b;
+  color: #374151;
   margin-bottom: 10px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
 }
 .rp-chart-full {
   border: 1px solid #e2e8f0;
@@ -1553,31 +1535,31 @@
   margin-bottom: 8px;
 }
 
-/* 상세 테이블 */
+/* 상세 테이블 - 공문서 스타일 */
 .rp-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   margin-top: 4px;
+  border: 0.5px solid #94a3b8;
 }
 .rp-table thead th {
-  background: #1e293b;
-  color: #f8fafc;
-  padding: 8px 10px;
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 7px 10px;
   text-align: left;
   font-weight: 700;
   font-size: 11px;
-  letter-spacing: 0.3px;
+  border: 0.5px solid #94a3b8;
 }
-.rp-table thead th:nth-child(3),
-.rp-table thead th:nth-child(4) { text-align: right; }
-.rp-table tbody tr { border-bottom: 1px solid #e2e8f0; }
-.rp-table tbody tr:last-child { border-bottom: none; }
-.rp-table tbody td { padding: 7px 10px; color: #334155; }
-.rp-table tbody td:nth-child(3),
-.rp-table tbody td:nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }
+.rp-table tbody tr { border-bottom: 0.5px solid #cbd5e1; }
+.rp-table tbody tr:last-child { border-bottom: 0.5px solid #94a3b8; }
+.rp-table tbody td { padding: 6px 10px; color: #1e293b; border: 0.5px solid #e2e8f0; }
 .rp-table tbody tr:nth-child(even) { background: #f8fafc; }
 .rp-table-bar { height: 5px; border-radius: 3px; background: #3b82f6; min-width: 2px; }
+.rp-tag { display:inline-block; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; white-space:nowrap; vertical-align:middle; line-height:1.4; }
+.rp-tag--anomaly { background:#dbeafe; color:#1d4ed8; }
+.rp-tag--trend   { background:#fce7f3; color:#9d174d; }
 
 /* 결재란 */
 .rp-approval {
@@ -1755,6 +1737,32 @@
     page-break-after: always;
   }
   body.hs-report-print #hs-report-overlay .report-paper:last-child { page-break-after: avoid; }
+
+  /* 차트·테이블 블록 페이지 경계에서 잘리지 않도록 */
+  body.hs-report-print .rp-chart-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.hs-report-print .rp-chart-box {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.hs-report-print .rp-section-title {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  body.hs-report-print .rp-overview {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* 인쇄 시 지도·차트 높이를 살짝 줄여 1페이지 안에 푸터까지 수용 */
+  body.hs-report-print .rp-map-img {
+    max-height: 250px !important;
+  }
+  body.hs-report-print .rp-chart-canvas-wrap {
+    height: 165px !important;
+  }
 }
 
 /* 반응형: 헤더 우측 통계 숨김 */

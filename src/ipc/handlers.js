@@ -555,7 +555,11 @@ class IpcHandlers {
         const pdfData = await win.webContents.printToPDF({
           printBackground: true,
           pageSize: 'A4',
-          marginsType: 1
+          marginTop: 0,
+          marginBottom: 0,
+          marginLeft: 0,
+          marginRight: 0,
+          preferCSSPageSize: true
         });
 
         const dateStr = new Date().toISOString().slice(0, 10);

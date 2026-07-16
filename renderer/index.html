@@ -3927,7 +3927,9 @@ class AnalysisManager {
       }
     } catch(_) {}
 
-    const dateStr     = new Date().toLocaleDateString('ko-KR');
+    const _DAY = ['일','월','화','수','목','금','토'];
+    const _now = new Date();
+    const dateStr = `${_now.getFullYear()}. ${_now.getMonth()+1}. ${_now.getDate()}.(${_DAY[_now.getDay()]})`;
     const counts      = { critical: 0, high: 0, medium: 0, low: 0 };
     data.forEach(h => counts[h.risk_level]++);
     const anomalyCnt  = data.filter(h => h.anomaly).length;
@@ -3945,63 +3947,59 @@ class AnalysisManager {
     const totalPages = chunks.length + 1;
 
     // ── 1페이지 ──
+    const _secChart = mapDataURL ? 3 : 2;
     const paper1 = `
       <div class="report-paper visible">
-        <div class="rp-header">
-          <div class="rp-header-left">
-            <div class="rp-org">남양주시 주차관리과</div>
-            <div class="rp-title">핫스팟 단속 구간 분석 보고서</div>
-            <div class="rp-subtitle">수동 업로드 마커 기준 · ${this._months}개월 분석</div>
+        <div class="rp-date-line">${dateStr}</div>
+        <div class="rp-title">핫스팟 단속 구간 분석 보고서</div>
+
+        <div class="rp-overview">
+          <div class="rp-overview-label">◇ 보고서 개요</div>
+          <div class="rp-overview-row">○ 분석 기간 : ${this._months}개월 &emsp; ○ 분석 구간 : <strong>${data.length}개소</strong> &emsp; ○ 총 단속건수 : <strong>${totalMarkers.toLocaleString()}건</strong></div>
+        </div>
+
+        <div class="rp-section-title">1&nbsp; 단속 현황 요약</div>
+        <div class="rp-bullet">○ 위험등급별 현황</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 14px 16px">
+          <div style="border:0.5px solid #94a3b8;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:800;color:#dc2626">${counts.critical}</div>
+            <div style="font-size:11px;color:#374151;margin-top:3px">상시단속</div>
           </div>
-          <div class="rp-header-right">
-            <div>출력일자: <strong>${dateStr}</strong></div>
-            <div>분석 구간: <strong>${data.length}개소</strong></div>
-            <div>총 단속건수: <strong>${totalMarkers.toLocaleString()}건</strong></div>
+          <div style="border:0.5px solid #94a3b8;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:800;color:#ea580c">${counts.high}</div>
+            <div style="font-size:11px;color:#374151;margin-top:3px">고위험</div>
+          </div>
+          <div style="border:0.5px solid #94a3b8;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:800;color:#ca8a04">${counts.medium}</div>
+            <div style="font-size:11px;color:#374151;margin-top:3px">주의</div>
+          </div>
+          <div style="border:0.5px solid #94a3b8;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:800;color:#16a34a">${counts.low}</div>
+            <div style="font-size:11px;color:#374151;margin-top:3px">보통</div>
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
-          <div style="background:#fee2e2;border-radius:8px;padding:10px;text-align:center">
-            <div style="font-size:22px;font-weight:800;color:#ef4444">${counts.critical}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🔴 상시단속</div>
-          </div>
-          <div style="background:#ffedd5;border-radius:8px;padding:10px;text-align:center">
-            <div style="font-size:22px;font-weight:800;color:#f97316">${counts.high}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🟠 고위험</div>
-          </div>
-          <div style="background:#fef9c3;border-radius:8px;padding:10px;text-align:center">
-            <div style="font-size:22px;font-weight:800;color:#ca8a04">${counts.medium}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🟡 주의</div>
-          </div>
-          <div style="background:#dcfce7;border-radius:8px;padding:10px;text-align:center">
-            <div style="font-size:22px;font-weight:800;color:#16a34a">${counts.low}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px">🟢 보통</div>
-          </div>
-        </div>
-
-        ${(anomalyCnt > 0 || trendingCnt > 0) ? `
-        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-          <span style="font-size:11px;font-weight:700;color:#92400e">이상감지 결과</span>
-          ${anomalyCnt  > 0 ? `<span style="background:#fff7ed;color:#ea580c;font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px">⚡ 이상 ${anomalyCnt}구간</span>` : ''}
-          ${trendingCnt > 0 ? `<span style="background:#fef2f2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px">📈 급증 ${trendingCnt}구간</span>` : ''}
-          <span style="font-size:10px;color:#94a3b8">— 즉각적인 현장 점검 권고</span>
-        </div>` : ''}
+        <div class="rp-bullet">○ 이상 감지 결과 : ${
+          (anomalyCnt > 0 || trendingCnt > 0)
+            ? `<span style="color:#0000ff;font-weight:700">${[anomalyCnt > 0 ? `Z-score 이상 ${anomalyCnt}구간` : '', trendingCnt > 0 ? `단속 급증 ${trendingCnt}구간` : ''].filter(Boolean).join(' · ')}</span> — 즉각적인 현장 점검 권고`
+            : '이상 감지된 구간 없음'
+        }</div>
 
         ${mapDataURL ? `
-        <div class="rp-section-title">현황 지도</div>
-        <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;margin-bottom:14px">
-          <img src="${mapDataURL}" style="width:100%;display:block;max-height:320px;object-fit:cover;object-position:center" alt="핫스팟 현황 지도">
+        <div class="rp-section-title">2&nbsp; 현황 지도</div>
+        <div style="border:0.5px solid #94a3b8;overflow:hidden;margin-bottom:14px">
+          <img src="${mapDataURL}" class="rp-map-img" style="width:100%;display:block;max-height:300px;object-fit:cover;object-position:center" alt="핫스팟 현황 지도">
         </div>` : ''}
 
-        <div class="rp-section-title">위험등급 분포 및 월평균 상위 구간</div>
+        <div class="rp-section-title">${_secChart}&nbsp; 위험등급 분포 및 월평균 상위 구간</div>
         <div class="rp-chart-row">
-          <div class="rp-chart-box" style="flex:0.85">
+          <div class="rp-chart-box">
             <div class="rp-chart-box-title">위험등급 분포</div>
-            <div style="position:relative;height:175px"><canvas id="hs-rp-donut"></canvas></div>
+            <div class="rp-chart-canvas-wrap" style="position:relative;height:175px"><canvas id="hs-rp-donut"></canvas></div>
           </div>
-          <div class="rp-chart-box" style="flex:1.15">
+          <div class="rp-chart-box">
             <div class="rp-chart-box-title">월평균 상위 10구간</div>
-            <div style="position:relative;height:200px"><canvas id="hs-rp-bar"></canvas></div>
+            <div class="rp-chart-canvas-wrap" style="position:relative;height:200px"><canvas id="hs-rp-bar"></canvas></div>
           </div>
         </div>
 
@@ -4018,11 +4016,13 @@ class AnalysisManager {
       const startRank = idx * ROWS_PER_PAGE + 1;
       const rows = chunk.map((h, i) => {
         const barW = Math.round(h.total / maxTotal * 100);
-        const badges = (h.anomaly  ? `<span style="color:#ea580c;font-weight:700">⚡</span>` : '') +
-                       (h.trending ? `<span style="color:#dc2626;font-weight:700">📈</span>` : '');
+        const badges = [
+          h.anomaly  ? `<span class="rp-tag rp-tag--anomaly">이상</span>` : '',
+          h.trending ? `<span class="rp-tag rp-tag--trend">급증</span>`   : ''
+        ].filter(Boolean).join(' ');
         return `<tr>
           <td style="text-align:center;color:#94a3b8;font-weight:700">${startRank + i}</td>
-          <td><span style="background:${BG[h.risk_level]};color:${COLOR[h.risk_level]};font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px">${LABEL[h.risk_level]}</span></td>
+          <td style="white-space:nowrap"><span style="background:${BG[h.risk_level]};color:${COLOR[h.risk_level]};font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;white-space:nowrap">${LABEL[h.risk_level]}</span></td>
           <td style="font-size:10px;color:#334155">${h.address || `${h.center_lat.toFixed(4)}, ${h.center_lng.toFixed(4)}`}</td>
           <td style="text-align:right;font-weight:700">${h.total.toLocaleString()}</td>
           <td style="text-align:right">${h.recent_3m.toLocaleString()}</td>
@@ -4032,15 +4032,13 @@ class AnalysisManager {
       }).join('');
       return `
         <div class="report-paper visible">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1.5px solid #1e293b;margin-bottom:20px">
-            <div style="font-size:14px;font-weight:800;color:#0f172a">핫스팟 단속 구간 분석 보고서 — 전체 목록</div>
-            <div style="font-size:11px;color:#64748b">${dateStr} · ${pageNum}/${totalPages}페이지</div>
-          </div>
-          <div class="rp-section-title">핫스팟 전체 현황 (${startRank}~${startRank + chunk.length - 1}위)</div>
+          <div class="rp-date-line">${dateStr} · ${pageNum}/${totalPages}페이지</div>
+          <div class="rp-title">핫스팟 단속 구간 분석 보고서 — 전체 목록</div>
+          <div class="rp-section-title">1&nbsp; 핫스팟 전체 현황 (${startRank}~${startRank + chunk.length - 1}위)</div>
           <table class="rp-table">
             <thead><tr>
               <th style="width:36px;text-align:center">순위</th>
-              <th style="width:58px">등급</th>
+              <th style="width:68px">등급</th>
               <th>단속장소</th>
               <th style="width:52px;text-align:right">누적</th>
               <th style="width:52px;text-align:right">3개월</th>
@@ -4161,7 +4159,7 @@ class AnalysisManager {
           plugins: { legend: { display: false } },
           scales: {
             x: { ticks: { color: '#94a3b8', font: { size: 9 } },
-                 title: { display: true, text: '월평균 건수', font: { size: 9 }, color: '#94a3b8' } },
+                 title: { display: false } },
             y: { ticks: { color: '#475569', font: { size: 9 }, autoSkip: false, maxRotation: 0 } }
           }
         }
@@ -7106,6 +7104,18 @@ window.SidebarUI = SidebarUI;
 <script>
 const PatchNotes = (() => {
   const DATA = [
+    {
+      version: '1.2.0',
+      date: '2026-07-16',
+      highlights: [
+        '핫스팟 분석 리포트 서식을 남양주시 공문서 양식에 맞게 전면 개편 — 제목·보고서 개요·번호 소제목·공문서 표 스타일 적용',
+        'PDF 출력 안정화 — 이모지 배지를 CSS 텍스트 배지(이상·급증)로 교체해 인쇄 시 누락 방지',
+        'PDF 페이지 잘림·여백 문제 해결 — printToPDF CSS 페이지 크기 우선 적용, 차트·표 페이지 경계 분리 방지',
+        '리포트 전체목록 등급 칸 줄바꿈 방지(상시단속 한 줄 표기), 월평균 상위구간 바차트 축 라벨 정리',
+        '2026년 상반기(4~6월, 6/30 기준) 고정형·주행형·시민신고 단속 데이터 반영',
+        '앱 기본 탑재 데이터 갱신 — 신규 설치 시 최신 단속 현황을 즉시 확인 가능'
+      ]
+    },
     {
       version: '1.1.0',
       date: '2026-05-29',
