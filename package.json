@@ -1,6 +1,6 @@
 {
   "name": "namyangju-smart-parking",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "남양주시 스마트주정차 데스크톱 앱",
   "main": "main.js",
   "scripts": {
@@ -78,7 +78,6 @@
       "!data/smartparking.db",
       "!data/*.db-shm",
       "!data/*.db-wal",
-      "!data/*.xlsx",
       "!data/*.LDH",
       "!data/cache/**",
       "!data/uploads/**",
