@@ -6,6 +6,14 @@ data/*.db-shm
 data/*.db-wal
 .env
 *.tmp*
+
+# 비밀정보 / 런타임 생성 파일 (절대 커밋 금지)
+config.json
+renderer/index-generated.html
+
+# 번들용 원본 데이터 (빌드 시에만 사용, 저장소에는 미포함)
+data/*.xlsx
+data/*.LDH
 icon_16.png
 icon_32.png
 icon_48.png
