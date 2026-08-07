@@ -578,6 +578,96 @@ class IpcHandlers {
       }
     });
 
+    // 20-1. 인터랙티브 HTML 리포트 저장 (자기완결형: CSS·Chart.js 인라인 → 오프라인 동작)
+    ipcMain.handle('report:exportHTML', async (event, payload) => {
+      try {
+        const { BrowserWindow } = require('electron');
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (!win) return { success: false, error: '창 참조 실패' };
+
+        const { bodyHTML = '', initScript = '', title = '핫스팟 분석 리포트' } = payload || {};
+
+        // 정적 자산을 앱 폴더에서 읽어 인라인 (외부 의존 0)
+        let appCss = '';
+        try { appCss = fs.readFileSync(path.join(this.appPath, 'renderer', 'css', 'app.css'), 'utf8'); } catch (_) {}
+        let chartJs = '';
+        try { chartJs = fs.readFileSync(path.join(this.appPath, 'node_modules', 'chart.js', 'dist', 'chart.umd.min.js'), 'utf8'); } catch (_) {}
+
+        const esc = (s) => String(s).replace(/</g, '&lt;');
+        const html = `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)}</title>
+<style>${appCss}</style>
+<style>
+  /* 자기완결형 리포트용 레이아웃 (화면 오버레이가 아닌 문서 형태)
+     ※ 앱 CSS의 html,body{height:100%;overflow:hidden}를 반드시 덮어써 스크롤 허용 */
+  html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; overflow-x: hidden !important; }
+  body { margin: 0 !important; background: #e2e8f0 !important; padding: 24px 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .report-paper { display: block !important; margin: 0 auto 20px !important; box-shadow: 0 4px 24px rgba(0,0,0,0.12) !important; }
+  .rp-table tbody tr { transition: background .12s; }
+  .rp-table tbody tr:hover { background: #eef2ff !important; }
+  @media print { html, body { overflow: visible !important; } body { background: #fff !important; padding: 0 !important; } .report-paper { box-shadow: none !important; margin: 0 !important; page-break-after: always; } .report-paper:last-child { page-break-after: avoid; } @page { size: A4; margin: 0; } }
+</style>
+</head>
+<body>
+${bodyHTML}
+<script>${chartJs}</script>
+<script>
+try { ${initScript} } catch(e) { console.error('chart init error', e); }
+</script>
+</body>
+</html>`;
+
+        const dateStr = new Date().toISOString().slice(0, 10);
+        // 리포트 제목에서 파일명 생성 (끝의 (날짜) 괄호 제거 + 파일명 금지문자 제거)
+        const baseName = String(title)
+          .replace(/\s*\([^)]*\)\s*$/, '')
+          .replace(/[\\/:*?"<>|]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim() || '리포트';
+        const { filePath, canceled } = await dialog.showSaveDialog(win, {
+          title: '인터랙티브 HTML 리포트 저장',
+          defaultPath: `${baseName}_${dateStr}.html`,
+          filters: [{ name: 'HTML 파일', extensions: ['html'] }]
+        });
+        if (canceled || !filePath) return { success: false, canceled: true };
+        fs.writeFileSync(filePath, html, 'utf8');
+        return { success: true, filePath };
+      } catch (e) {
+        this.log.error('report:exportHTML error:', e);
+        return { success: false, error: e.message };
+      }
+    });
+
+    // 20-3. 이미지(PNG) 저장 — 읍면동별 지도+정보 카드 등
+    ipcMain.handle('image:save', async (event, payload) => {
+      try {
+        const { BrowserWindow } = require('electron');
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (!win) return { success: false, error: '창 참조 실패' };
+        const { dataURL = '', defaultName = '이미지' } = payload || {};
+        const m = /^data:image\/(png|jpeg);base64,(.+)$/.exec(dataURL);
+        if (!m) return { success: false, error: '잘못된 이미지 데이터' };
+        const buf = Buffer.from(m[2], 'base64');
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const baseName = String(defaultName).replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || '이미지';
+        const { filePath, canceled } = await dialog.showSaveDialog(win, {
+          title: '이미지 저장',
+          defaultPath: `${baseName}_${dateStr}.png`,
+          filters: [{ name: 'PNG 이미지', extensions: ['png'] }]
+        });
+        if (canceled || !filePath) return { success: false, canceled: true };
+        fs.writeFileSync(filePath, buf);
+        return { success: true, filePath };
+      } catch (e) {
+        this.log.error('image:save error:', e);
+        return { success: false, error: e.message };
+      }
+    });
+
     // ── 분석 엔진 ────────────────────────────────────────────────────────────
 
     // A-1. 핫스팟 격자 집계

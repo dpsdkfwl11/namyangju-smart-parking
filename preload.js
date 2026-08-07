@@ -59,7 +59,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 리포트
   report: {
-    exportPDF: () => ipcRenderer.invoke('report:exportPDF')
+    exportPDF:  () => ipcRenderer.invoke('report:exportPDF'),
+    exportHTML: (payload) => ipcRenderer.invoke('report:exportHTML', payload)
+  },
+
+  // 지도 이미지 저장 (구간 이미지 편집기 PNG 내보내기)
+  map: {
+    saveImage:  (payload) => ipcRenderer.invoke('image:save', payload)
   },
 
   // 분석 엔진

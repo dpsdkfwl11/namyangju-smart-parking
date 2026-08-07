@@ -26,6 +26,9 @@
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- Leaflet: 지도 이미지 편집기용 (로컬 번들, 오프라인 동작) -->
+  <link rel="stylesheet" href="lib/leaflet.css" />
+  <script src="lib/leaflet.js"></script>
   <link rel="stylesheet" href="../static/css/app-ui.css" />
 
   <link rel="stylesheet" href="css/app.css" />
@@ -301,6 +304,18 @@
             </div>
             <div class="sb-toggle" id="mask-btn" data-layer="mask"><div class="sb-toggle-thumb"></div></div>
           </div>
+
+          <!-- 읍면동별 구간 이미지 -->
+          <button onclick="MapApp?.openEmdImagePicker?.()" title="읍면동을 선택해 탄력운영구간을 번호와 함께 지도+설명 이미지(PNG)로 저장 — 한글 문서 첨부용" style="width:100%;margin-top:6px;padding:9px;font-size:12px;font-weight:600;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            읍면동별 구간 이미지
+          </button>
+
+          <!-- 전체·시간대별 구간 이미지 -->
+          <button onclick="MapApp?.openPeriodImagePicker?.()" title="전체 구간 또는 점심·저녁·공휴일 등 시간대별 구간을 이미지로 저장 (여러 시간대 동시 선택 시 색상 구분)" style="width:100%;margin-top:6px;padding:9px;font-size:12px;font-weight:600;background:#6d28d9;color:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+            전체·시간대별 구간 이미지
+          </button>
 
         </div>
       </div>
@@ -825,6 +840,10 @@
         <button class="btn btn-secondary btn-sm" onclick="window.print()" title="인쇄">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           인쇄
+        </button>
+        <button class="btn btn-secondary btn-sm" id="report-html-btn" onclick="MainTabs.ReportPage.exportHTML()" title="마우스를 올리면 수치가 표시되는 인터랙티브 HTML로 저장 (프로그램 없이 열람 가능)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          HTML 저장
         </button>
         <button class="btn btn-secondary btn-sm" id="report-pdf-btn" onclick="MainTabs.ReportPage.exportPDF()" title="PDF 저장">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -2119,6 +2138,12 @@ class MapApplication {
     }
   }
 
+  // 특정 탄력운영구간 → 안내 이미지 매핑 (info 속성의 키가 일치하면 hover 시 이미지 표시)
+  // 새 안내도가 생기면 여기 한 줄만 추가하면 됩니다.
+  static ZONE_IMAGE_MAP = {
+    '별내택지지구12개구간': 'zone_images/byeollae-taekji-lunch.png'
+  };
+
   buildTooltipHTML(feature) {
     const title = feature.get('title');
     const category = feature.get('category');
@@ -2140,6 +2165,10 @@ class MapApplication {
     const restEntries  = rawEntries.filter(([k]) => !PLACE_PRIORITY.some(p => k.includes(p)) && !DATE_PRIORITY.some(p => k.includes(p)));
     const entries = [...placeEntries, ...dateEntries, ...restEntries];
 
+    // 안내 이미지 매핑: info 속성 키 중 매핑에 등록된 것이 있으면 이미지 경로 추출
+    const imgMap = this.constructor.ZONE_IMAGE_MAP || {};
+    const imgSrc = Object.keys(info).map(k => imgMap[k]).find(Boolean);
+
     let html = '';
     if (title) html += `<div class="tooltip-title">${this.escapeHtml(String(title))}</div>`;
     if (category) html += `<div class="tooltip-category">${this.escapeHtml(String(category))}</div>`;
@@ -2150,8 +2179,673 @@ class MapApplication {
       });
       html += '</div>';
     }
+    if (imgSrc) {
+      html += `<img class="tooltip-image" src="${imgSrc}" alt="구간 안내도" loading="lazy">`;
+    }
     return html;
   }
+
+  // 자기완결형 인터랙티브 리포트 HTML 저장 (선택영역·리포트탭 공용, 순수 JSON 차트 config 전제)
+  async saveInteractiveReportHTML({ title, bodyHTML, chartSpecs = [] }) {
+    this.showToast('HTML 리포트 생성 중...', 'info');
+    const initScript =
+      'var __S=' + JSON.stringify(chartSpecs) + ';' +
+      '__S.forEach(function(s){var c=document.getElementById(s.id); if(c && typeof Chart!=="undefined"){ try{ new Chart(c, s.config); }catch(e){ console.error("chart",s.id,e); } }});';
+    try {
+      const res = await window.electronAPI.report.exportHTML({ title, bodyHTML, initScript });
+      if (res && res.success)        this.showToast('HTML 리포트를 저장했습니다', 'success');
+      else if (!res || !res.canceled) this.showToast('HTML 저장 중 오류가 발생했습니다', 'error');
+      return res;
+    } catch (e) {
+      this.showToast('HTML 저장 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  // ── 읍면동별 탄력운영구간 지도+정보 이미지(PNG) ──
+  openEmdImagePicker() {
+    if (typeof NJ_EMD === 'undefined' || typeof turf === 'undefined') { this.showToast('지도 데이터가 준비되지 않았습니다', 'warning'); return; }
+    document.getElementById('emd-img-modal')?.remove();
+    const names = (NJ_EMD.features || []).map(f => f.properties.ADM_NM).sort((a, b) => a.localeCompare(b, 'ko'));
+    const modal = document.createElement('div');
+    modal.id = 'emd-img-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9900;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:22px 24px;width:340px;box-shadow:0 12px 40px rgba(0,0,0,.4)">
+        <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px">읍면동별 탄력운영구간 이미지</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">선택한 읍면동의 탄력운영구간을 번호와 함께 지도+설명 이미지로 저장합니다.</div>
+        <select id="emd-img-select" style="width:100%;padding:9px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);color:var(--text-primary);font-size:13px;margin-bottom:16px">
+          ${names.map(n => `<option value="${n}">${n}</option>`).join('')}
+        </select>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="document.getElementById('emd-img-modal').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer">취소</button>
+          <button onclick="const v=document.getElementById('emd-img-select').value;document.getElementById('emd-img-modal').remove();MapApp.exportEmdMapImage(v)" style="padding:8px 16px;border-radius:8px;border:none;background:#0ea5e9;color:#fff;font-size:13px;font-weight:700;cursor:pointer">이미지 생성</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  }
+
+  _emdCardStyle(feat) {
+    const kind = feat.get('_kind');
+    if (kind === 'emd') return new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#1d4ed8', width: 3.5, lineDash: [9, 5] }), fill: new ol.style.Fill({ color: 'rgba(37,99,235,0.06)' }) });
+    if (kind === 'zone') return new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#dc2626', width: 5 }), fill: new ol.style.Fill({ color: 'rgba(220,38,38,0.15)' }) });
+    if (kind === 'num') return new ol.style.Style({
+      image: new ol.style.Circle({ radius: 13, fill: new ol.style.Fill({ color: '#dc2626' }), stroke: new ol.style.Stroke({ color: '#fff', width: 2.5 }) }),
+      text: new ol.style.Text({ text: String(feat.get('_n')), fill: new ol.style.Fill({ color: '#fff' }), font: 'bold 14px sans-serif' })
+    });
+    return null;
+  }
+
+  async exportEmdMapImage(emdName) {
+    const emdFeat = (NJ_EMD.features || []).find(f => f.properties.ADM_NM === emdName);
+    if (!emdFeat) { this.showToast('읍면동을 찾을 수 없습니다', 'warning'); return; }
+    const zones = (this.embeddedGeoJSON?.features || []);
+    const inZones = zones.filter(z => { try { return turf.booleanIntersects(z, emdFeat); } catch (e) { return false; } });
+    this._openEditorForZones(emdName, inZones, emdFeat);
+  }
+
+  // 시간대 카테고리 정의 (속성 키 매칭)
+  _periodCats() {
+    return [
+      { name: '점심', re: /점심/ }, { name: '저녁', re: /저녁|오후/ },
+      { name: '심야', re: /심야/ }, { name: '공휴일·주말', re: /공휴일|주말|일요일/ }
+    ];
+  }
+  _zoneMatchesCat(z, cat) {
+    const p = z.properties || {};
+    const keys = Object.keys(p).filter(k => p[k]).join(' ');
+    return cat.re.test(keys);
+  }
+  _meZoneColor(props) {
+    const keys = Object.keys(props || {}).filter(k => (props || {})[k]).join(' ');
+    if (/공휴일|주말|일요일/.test(keys)) return '#dc2626';
+    if (/심야/.test(keys)) return '#4f46e5';
+    if (/저녁|오후/.test(keys)) return '#7c3aed';
+    if (/점심/.test(keys)) return '#ea580c';
+    return '#2563eb';
+  }
+
+  // 전체 / 시간대별 구간 이미지
+  exportPeriodImage(cats) {
+    const zones = (this.embeddedGeoJSON?.features || []);
+    let inZones, label;
+    if (cats === 'all') { inZones = zones.slice(); label = '전체 탄력운영구간'; }
+    else {
+      inZones = zones.filter(z => cats.some(c => this._zoneMatchesCat(z, c)));
+      label = cats.map(c => c.name).join('·') + ' 탄력운영구간';
+    }
+    this._openEditorForZones(label, inZones, null);
+  }
+
+  _openEditorForZones(label, inZones, emdFeat) {
+    if (!inZones || !inZones.length) { this.showToast(`${label}: 해당하는 구간이 없습니다`, 'info'); return; }
+    if (typeof L === 'undefined') { this.showToast('지도 라이브러리 로드 실패', 'error'); return; }
+    let bb; try { bb = turf.bbox({ type: 'FeatureCollection', features: inZones }); } catch (e) { bb = emdFeat ? turf.bbox(emdFeat) : null; }
+    if (!bb) { this.showToast('구간 범위 계산 실패', 'error'); return; }
+    this.openMapEditor({ emdName: label, zones: inZones, emdFeat, bbox: bb });
+  }
+
+  // 시간대별 이미지 선택 모달
+  openPeriodImagePicker() {
+    if (typeof turf === 'undefined') { this.showToast('데이터가 준비되지 않았습니다', 'warning'); return; }
+    document.getElementById('emd-img-modal')?.remove();
+    const zones = (this.embeddedGeoJSON?.features || []);
+    const cats = this._periodCats().map(c => ({ ...c, count: zones.filter(z => this._zoneMatchesCat(z, c)).length })).filter(c => c.count > 0);
+    const modal = document.createElement('div');
+    modal.id = 'emd-img-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9900;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:22px 24px;width:360px;box-shadow:0 12px 40px rgba(0,0,0,.4)">
+        <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px">전체·시간대별 구간 이미지</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">시간대를 체크하면 해당 구간만, 여러 개 체크 시 색상으로 구분됩니다.</div>
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;margin-bottom:10px;cursor:pointer;font-size:13px;color:var(--text-primary)">
+          <input type="checkbox" id="pk-all"> <b>전체 구간</b> <span style="color:var(--text-muted);margin-left:auto">${zones.length}개</span>
+        </label>
+        <div id="pk-cats" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+          ${cats.map((c, i) => `<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-primary)"><input type="checkbox" class="pk-cat" data-i="${i}"> ${c.name} <span style="color:var(--text-muted);margin-left:auto">${c.count}개</span></label>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button id="pk-cancel" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer">취소</button>
+          <button id="pk-go" style="padding:8px 16px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">이미지 생성</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    modal.querySelector('#pk-cancel').onclick = () => modal.remove();
+    const allCk = modal.querySelector('#pk-all');
+    allCk.onchange = () => { if (allCk.checked) modal.querySelectorAll('.pk-cat').forEach(x => x.checked = false); };
+    modal.querySelectorAll('.pk-cat').forEach(x => x.onchange = () => { if (x.checked) allCk.checked = false; });
+    modal.querySelector('#pk-go').onclick = () => {
+      if (allCk.checked) { modal.remove(); this.exportPeriodImage('all'); return; }
+      const sel = [...modal.querySelectorAll('.pk-cat:checked')].map(x => cats[+x.dataset.i]);
+      if (!sel.length) { this.showToast('시간대를 하나 이상 선택하거나 전체 구간을 체크하세요', 'warning'); return; }
+      modal.remove(); this.exportPeriodImage(sel);
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  지도 이미지 편집기 v2 — Leaflet 라이브 지도 + 편집 레이어 (상용 디자인 툴)
+  // ══════════════════════════════════════════════════════════════════
+  openMapEditor(data) {
+    document.getElementById('map-editor-overlay')?.remove();
+    const PRESETS = [
+      { name: '빨강', c: '#dc2626' }, { name: '주황', c: '#ea580c' }, { name: '노랑', c: '#eab308' },
+      { name: '연두', c: '#84cc16' }, { name: '초록', c: '#22c55e' }, { name: '청록', c: '#14b8a6' },
+      { name: '하늘', c: '#0ea5e9' }, { name: '파랑', c: '#2563eb' }, { name: '남색', c: '#4f46e5' },
+      { name: '보라', c: '#7c3aed' }, { name: '자주', c: '#c026d3' }, { name: '분홍', c: '#ec4899' },
+      { name: '갈색', c: '#92400e' }, { name: '회색', c: '#64748b' }, { name: '검정', c: '#111827' },
+      { name: '하양', c: '#ffffff' }
+    ];
+    const DESIGNS = [
+      { id: 'filled', name: '기본' }, { id: 'outline', name: '외곽선' }, { id: 'shadow', name: '그림자' },
+      { id: 'pill', name: '알약' }, { id: 'square', name: '사각' }, { id: 'flat', name: '플랫' }
+    ];
+    const swatches = (attr) => PRESETS.map(p => `<button class="me-sw" data-${attr}="${p.c}" title="${p.name}" style="background:${p.c}"></button>`).join('');
+
+    const ov = document.createElement('div');
+    ov.id = 'map-editor-overlay';
+    ov.innerHTML = `
+      <div class="me-top">
+        <div class="me-top-left">
+          <span class="me-logo">🎨 지도 편집기</span>
+          <input id="me-title" class="me-title-input" value="${this.escapeHtml(data.emdName)} 탄력운영구간" />
+        </div>
+        <div class="me-top-right">
+          <select id="me-base" class="me-select" title="배경지도">
+            <option value="base">국토부 일반</option><option value="sat">국토부 위성</option><option value="hybrid">하이브리드</option><option value="osm">OpenStreetMap</option>
+          </select>
+          <button class="me-btn me-btn-primary" id="me-save">📥 PNG 저장</button>
+          <button class="me-btn" id="me-close">✕ 닫기</button>
+        </div>
+      </div>
+      <div class="me-body">
+        <div class="me-toolbar">
+          <button class="me-tool active" data-tool="select" title="선택">🖱</button>
+          <button class="me-tool" data-tool="multi" title="다중 선택(여러 개 동시 편집)">🔗</button>
+          <button class="me-tool" data-tool="text" title="텍스트 추가(지도 클릭)">🅣</button>
+          <div class="me-tool-sep"></div>
+          <button class="me-tool" data-sel="zones" title="구간 전체 선택">➰</button>
+          <button class="me-tool" data-sel="nums" title="번호 전체 선택">①</button>
+          <button class="me-tool" data-act="dup" title="복제(Ctrl+D)">⧉</button>
+          <button class="me-tool me-tool-danger" data-act="del" title="선택 삭제(Delete)">🗑</button>
+          <div class="me-tool-sep"></div>
+          <button class="me-tool" data-act="refit" title="구간에 맞춰 보기">🎯</button>
+          <div class="me-tool-sep"></div>
+          <div class="me-zoombar" title="확대/축소 미세 조절">
+            <button class="me-zbtn" data-zoom="in">＋</button>
+            <input type="range" id="me-zoom-range" min="0" max="1" step="0.05" value="0.5">
+            <button class="me-zbtn" data-zoom="out">−</button>
+            <span class="me-zoom-val" id="me-zoom-val">–</span>
+          </div>
+        </div>
+        <div class="me-canvas-wrap">
+          <div id="me-capture">
+            <div id="me-map"></div>
+            <div id="me-info">
+              <div id="me-info-head" title="드래그하여 이동">⠿ 설명란</div>
+              <div id="me-info-body" contenteditable="true" spellcheck="false"></div>
+              <div id="me-info-resize" title="크기 조절"></div>
+            </div>
+          </div>
+        </div>
+        <div class="me-side">
+          <div class="me-panel" id="me-props">
+            <div class="me-panel-title">속성</div>
+            <div id="me-props-body" class="me-props-empty">지도에서 구간·번호를 클릭하거나<br>다중 선택으로 여러 개를 함께 편집하세요.</div>
+          </div>
+          <div class="me-panel" id="me-layers-panel">
+            <div class="me-panel-title">레이어</div>
+            <div id="me-layers-body"></div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+
+    const me = this._me = { data, PRESETS, DESIGNS, swatches, zones: [], nums: [], texts: [], selected: new Set(), multi: false, tool: 'select' };
+
+    // ── Leaflet 지도 ──
+    const key = this.state.currentApiKey;
+    const vw = (t, ext) => L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${key}/${t}/{z}/{y}/{x}.${ext}`, { maxZoom: 19 });
+    const bases = {
+      base: vw('Base', 'png'),
+      sat:  vw('Satellite', 'jpeg'),
+      hybrid: L.layerGroup([vw('Satellite', 'jpeg'), vw('Hybrid', 'png')]),
+      osm:  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+    };
+    const map = L.map('me-map', { zoomControl: true, attributionControl: false, preferCanvas: false, doubleClickZoom: false, zoomSnap: 0.05, zoomDelta: 0.25, wheelPxPerZoomLevel: 120 });
+    me.map = map; me.bases = bases; me.curBase = 'base';
+    bases.base.addTo(map);
+    map.fitBounds([[data.bbox[1], data.bbox[0]], [data.bbox[3], data.bbox[2]]], { padding: [45, 45] });
+    setTimeout(() => map.invalidateSize(), 60);
+    setTimeout(() => this._meInitInfoBox(), 80);
+    this._meInitZoomBar();
+
+    // ── 구간 레이어 ──
+    (data.zones || []).forEach((z, i) => {
+      const style = { color: this._meZoneColor(z.properties), weight: 5, opacity: 0.95, dashArray: null, lineCap: 'round', lineJoin: 'round' };
+      const layer = L.geoJSON(z, { style: () => style });
+      layer.addTo(map);
+      const item = { kind: 'zone', n: i + 1, layer, feat: z, props: z.properties || {}, style };
+      layer.on('click', (e) => { L.DomEvent.stop(e); this._meClick(item, e); });
+      me.zones.push(item);
+    });
+
+    // ── 번호 마커 ──
+    (data.zones || []).forEach((z, i) => {
+      let c; try { c = turf.centroid(z).geometry.coordinates; } catch (e) { return; }
+      const st = { design: 'filled', color: '#dc2626', textColor: '#ffffff', size: 30 };
+      const marker = L.marker([c[1], c[0]], { icon: this._meNumberIcon(i + 1, st), draggable: true, autoPan: false });
+      marker.addTo(map);
+      const item = { kind: 'num', n: i + 1, marker, latlng: [c[1], c[0]], props: z.properties || {}, style: st };
+      marker.on('click', (e) => { L.DomEvent.stop(e); this._meClick(item, e); });
+      marker.on('dragend', () => { item.latlng = [marker.getLatLng().lat, marker.getLatLng().lng]; });
+      me.nums.push(item);
+    });
+
+    // ── 지도 클릭: 텍스트 추가 / 선택 해제 ──
+    map.on('click', (e) => {
+      if (me.tool === 'text') { this._meAddText(e.latlng); this._meSetTool('select'); return; }
+      if (!me.multi) this._meClearSelection();
+    });
+
+    this._meWire(ov);
+    this._meRenderInfo();
+    this._meRenderLayers();
+    this._meRenderProps();
+  }
+
+  _meInitZoomBar() {
+    const me = this._me, map = me.map;
+    const range = document.getElementById('me-zoom-range');
+    const val = document.getElementById('me-zoom-val');
+    const wrap = document.querySelector('.me-zoombar');
+    if (!range || !map) return;
+    let lo = map.getMinZoom(), hi = map.getMaxZoom();
+    if (!isFinite(lo)) lo = 3; if (!isFinite(hi)) hi = 20;
+    range.min = lo; range.max = hi; range.step = 0.05;
+    const sync = () => { const z = map.getZoom(); range.value = z; if (val) val.textContent = z.toFixed(1); };
+    sync();
+    map.on('zoom zoomend', sync);
+    range.addEventListener('input', () => { map.setZoom(parseFloat(range.value), { animate: false }); if (val) val.textContent = parseFloat(range.value).toFixed(1); });
+    if (wrap) wrap.querySelectorAll('[data-zoom]').forEach(b => b.onclick = () => {
+      map.setZoom(map.getZoom() + (b.dataset.zoom === 'in' ? 0.25 : -0.25), { animate: true });
+    });
+  }
+
+  _meNumberIcon(n, o) {
+    const s = o.size || 30, color = o.color || '#dc2626', tc = o.textColor || '#ffffff';
+    const fs = Math.round(s * 0.46);
+    const base = `display:flex;align-items:center;justify-content:center;height:${s}px;font-weight:700;font-family:'Malgun Gothic',sans-serif;font-size:${fs}px;box-sizing:border-box;`;
+    let w = s, html;
+    switch (o.design) {
+      case 'outline': html = `<div style="${base}width:${s}px;background:#fff;border:2.5px solid ${color};color:${color};border-radius:50%">${n}</div>`; break;
+      case 'shadow':  html = `<div style="${base}width:${s}px;background:${color};color:${tc};border-radius:50%;box-shadow:0 2px 7px rgba(0,0,0,.55)">${n}</div>`; break;
+      case 'pill':    w = Math.round(s * 1.35); html = `<div style="${base}width:${w}px;background:${color};color:${tc};border-radius:${s}px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">${n}</div>`; break;
+      case 'square':  html = `<div style="${base}width:${s}px;background:${color};color:${tc};border-radius:7px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">${n}</div>`; break;
+      case 'flat':    html = `<div style="${base}width:${s}px;background:${color};color:${tc};border-radius:50%">${n}</div>`; break;
+      default:        html = `<div style="${base}width:${s}px;background:${color};color:${tc};border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">${n}</div>`;
+    }
+    return L.divIcon({ className: 'me-num-icon', html, iconSize: [w, s], iconAnchor: [w / 2, s / 2] });
+  }
+
+  _meClick(item, e) {
+    const me = this._me;
+    me.infoSelected = false;
+    const additive = me.multi || (e && e.originalEvent && (e.originalEvent.shiftKey || e.originalEvent.ctrlKey));
+    if (!additive) this._meClearSelection(true);
+    if (me.selected.has(item)) { me.selected.delete(item); this._meVisual(item, false); }
+    else { me.selected.add(item); this._meVisual(item, true); }
+    this._meRenderProps();
+    this._meRenderLayers();
+  }
+  _meClearSelection(skipRender) {
+    const me = this._me;
+    me.selected.forEach(it => this._meVisual(it, false));
+    me.selected.clear();
+    me.infoSelected = false;
+    if (!skipRender) { this._meRenderProps(); this._meRenderLayers(); }
+  }
+  _meVisual(item, on) {
+    if (item.kind === 'zone') { item.layer.setStyle({ weight: on ? item.style.weight + 5 : item.style.weight, opacity: 1 }); if (on && item.layer.bringToFront) item.layer.bringToFront(); }
+    else { const el = item.marker.getElement(); if (el) el.classList.toggle('me-sel-marker', on); }
+  }
+
+  _meWire(ov) {
+    const me = this._me, map = me.map;
+    ov.querySelectorAll('.me-tool[data-tool]').forEach(b => b.onclick = () => this._meSetTool(b.dataset.tool));
+    ov.querySelectorAll('.me-tool[data-sel]').forEach(b => b.onclick = () => {
+      this._meClearSelection(true);
+      const arr = b.dataset.sel === 'zones' ? me.zones : me.nums;
+      arr.forEach(it => { me.selected.add(it); this._meVisual(it, true); });
+      this._meRenderProps(); this._meRenderLayers();
+    });
+    ov.querySelectorAll('.me-tool[data-act]').forEach(b => b.onclick = () => this._meDoAct(b.dataset.act));
+    ov.querySelector('#me-save').onclick = () => this._meExport();
+    ov.querySelector('#me-close').onclick = () => this.closeMapEditor();
+    ov.querySelector('#me-title').oninput = () => this._meRenderInfo();
+    ov.querySelector('#me-base').onchange = (e) => {
+      map.removeLayer(me.bases[me.curBase]); me.curBase = e.target.value; me.bases[me.curBase].addTo(map);
+      Object.values(me.bases).forEach(l => l.bringToBack && l.bringToBack());
+    };
+    me._key = (e) => {
+      if (!document.getElementById('map-editor-overlay')) return;
+      const ae = document.activeElement; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'SELECT' || ae.isContentEditable)) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this._meDoAct('del'); return; }
+      if (e.ctrlKey && e.key.toLowerCase() === 'd') { e.preventDefault(); this._meDoAct('dup'); return; }
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        const markers = [...me.selected].filter(it => it.kind !== 'zone');
+        if (!markers.length) return;
+        e.preventDefault();
+        const step = e.shiftKey ? 12 : 2;
+        markers.forEach(it => {
+          const p = me.map.latLngToContainerPoint(it.marker.getLatLng());
+          if (e.key === 'ArrowUp') p.y -= step; if (e.key === 'ArrowDown') p.y += step;
+          if (e.key === 'ArrowLeft') p.x -= step; if (e.key === 'ArrowRight') p.x += step;
+          const ll = me.map.containerPointToLatLng(p); it.marker.setLatLng(ll); it.latlng = [ll.lat, ll.lng];
+        });
+      }
+    };
+    document.addEventListener('keydown', me._key);
+  }
+  _meSetTool(t) {
+    const me = this._me;
+    document.querySelectorAll('#map-editor-overlay .me-tool[data-tool]').forEach(x => x.classList.toggle('active', x.dataset.tool === t || (t === 'multi' && x.dataset.tool === 'multi')));
+    if (t === 'multi') { me.multi = !me.multi; document.querySelector('.me-tool[data-tool="multi"]').classList.toggle('active', me.multi); me.tool = 'select'; document.querySelector('.me-tool[data-tool="select"]').classList.toggle('active', !me.multi); this.showToast(me.multi ? '다중 선택 ON — 여러 개를 클릭해 함께 편집' : '다중 선택 OFF', 'info'); return; }
+    me.tool = t;
+    document.getElementById('me-map').style.cursor = (t === 'text') ? 'crosshair' : '';
+  }
+
+  _meAddText(latlng) {
+    const me = this._me;
+    const st = { color: '#111827', fontSize: 16 };
+    const html = `<div class="me-text-lbl" style="color:${st.color};font-size:${st.fontSize}px">텍스트</div>`;
+    const marker = L.marker(latlng, { icon: L.divIcon({ className: 'me-text-icon', html, iconSize: [80, 24] }), draggable: true });
+    marker.addTo(me.map);
+    const item = { kind: 'text', marker, latlng: [latlng.lat, latlng.lng], text: '텍스트', style: st };
+    marker.on('click', (e) => { L.DomEvent.stop(e); this._meClick(item, e); });
+    marker.on('dblclick', (e) => { L.DomEvent.stop(e); const t = prompt('텍스트 입력', item.text); if (t != null) { item.text = t; this._meUpdateText(item); } });
+    me.texts.push(item);
+    this._meClearSelection(true); me.selected.add(item); this._meVisual(item, true);
+    this._meRenderProps(); this._meRenderLayers();
+    this.showToast('텍스트 추가됨 — 더블클릭으로 내용 편집', 'info');
+  }
+  _meUpdateText(item) {
+    item.marker.setIcon(L.divIcon({ className: 'me-text-icon', html: `<div class="me-text-lbl" style="color:${item.style.color};font-size:${item.style.fontSize}px">${this.escapeHtml(item.text)}</div>`, iconSize: [Math.max(60, item.text.length * item.style.fontSize * 0.62), item.style.fontSize + 8] }));
+    this._meRenderInfo();
+  }
+
+  _meDoAct(act) {
+    const me = this._me;
+    if (act === 'del') {
+      me.selected.forEach(it => {
+        if (it.kind === 'zone') { me.map.removeLayer(it.layer); me.zones = me.zones.filter(x => x !== it); }
+        else { me.map.removeLayer(it.marker); me.nums = me.nums.filter(x => x !== it); me.texts = me.texts.filter(x => x !== it); }
+      });
+      me.selected.clear();
+      this._meRenderProps(); this._meRenderInfo(); this._meRenderLayers();
+    } else if (act === 'refit') {
+      me.map.fitBounds([[me.data.bbox[1], me.data.bbox[0]], [me.data.bbox[3], me.data.bbox[2]]], { padding: [45, 45] });
+    } else if (act === 'dup') {
+      const news = [];
+      [...me.selected].forEach(it => {
+        const off = (p) => me.map.containerPointToLatLng(me.map.latLngToContainerPoint(p).add([18, 18]));
+        if (it.kind === 'text') {
+          const st = { ...it.style }; const ll = off(it.marker.getLatLng());
+          const nm = L.marker(ll, { icon: it.marker.options.icon, draggable: true });
+          const ni = { kind: 'text', marker: nm, latlng: [ll.lat, ll.lng], text: it.text, style: st };
+          nm.addTo(me.map); nm.setIcon(L.divIcon({ className: 'me-text-icon', html: `<div class="me-text-lbl" style="color:${st.color};font-size:${st.fontSize}px">${this.escapeHtml(it.text)}</div>`, iconSize: [Math.max(60, it.text.length * st.fontSize * 0.62), st.fontSize + 8] }));
+          nm.on('click', (e) => { L.DomEvent.stop(e); this._meClick(ni, e); });
+          nm.on('dblclick', (e) => { L.DomEvent.stop(e); const t = prompt('텍스트 입력', ni.text); if (t != null) { ni.text = t; this._meUpdateText(ni); } });
+          me.texts.push(ni); news.push(ni);
+        } else if (it.kind === 'num') {
+          const st = { ...it.style }; const ll = off(it.marker.getLatLng());
+          const nm = L.marker(ll, { icon: this._meNumberIcon(it.n, st), draggable: true, autoPan: false });
+          const ni = { kind: 'num', n: it.n, marker: nm, latlng: [ll.lat, ll.lng], props: it.props, style: st };
+          nm.addTo(me.map);
+          nm.on('click', (e) => { L.DomEvent.stop(e); this._meClick(ni, e); });
+          nm.on('dragend', () => { ni.latlng = [nm.getLatLng().lat, nm.getLatLng().lng]; });
+          me.nums.push(ni); news.push(ni);
+        }
+      });
+      if (news.length) { this._meClearSelection(true); news.forEach(n => { me.selected.add(n); this._meVisual(n, true); }); this._meRenderProps(); this._meRenderLayers(); }
+    }
+  }
+
+  _meApplyColor(color) {
+    const me = this._me;
+    me.selected.forEach(it => {
+      if (it.kind === 'zone') { it.style.color = color; it.layer.setStyle({ color }); }
+      else if (it.kind === 'num') { it.style.color = color; it.marker.setIcon(this._meNumberIcon(it.n, it.style)); this._meVisual(it, true); }
+      else if (it.kind === 'text') { it.style.color = color; this._meUpdateText(it); }
+    });
+    this._meRenderInfo();
+  }
+
+  _meSelectInfo() {
+    const me = this._me;
+    me.selected.forEach(it => this._meVisual(it, false)); me.selected.clear();
+    me.infoSelected = true;
+    this._meRenderProps(); this._meRenderLayers();
+  }
+  _meRenderInfoProps(body) {
+    const me = this._me;
+    const bodyEl = document.getElementById('me-info-body');
+    const fonts = ['맑은 고딕', '굴림', '바탕', '돋움', 'Pretendard', '나눔고딕', 'sans-serif', 'serif'];
+    const curSize = parseInt(bodyEl ? getComputedStyle(bodyEl).fontSize : '14') || 14;
+    let html = `<div class="me-sel-count">📝 설명란 서식</div>`;
+    html += `<div class="me-sub">글꼴</div><div class="me-row"><select class="me-select2" data-if="family">${fonts.map(f => `<option value="${f}">${f}</option>`).join('')}</select></div>`;
+    html += `<div class="me-sub">전체 글자 크기</div><div class="me-row"><input type="range" min="10" max="28" value="${curSize}" data-if="size"><span class="me-val" data-if="sizeval">${curSize}</span></div>`;
+    html += `<div class="me-sub">선택 글자 크기(pt)</div><div class="me-row"><select class="me-select2" data-ifpt><option value="">— 선택 —</option>${[9,10,11,12,13,14,15,16,18,20,22,24,28,32,36,40,48].map(s => `<option value="${s}">${s} pt</option>`).join('')}</select></div>`;
+    html += `<div class="me-sub">글자색</div><div class="me-sw-row">${me.swatches('ifc')}</div>`;
+    html += `<div class="me-sub">서식</div><div class="me-btns"><button class="me-mini" data-ic="bold"><b>B</b></button><button class="me-mini" data-ic="italic"><i>I</i></button><button class="me-mini" data-ic="underline"><u>U</u></button></div>`;
+    html += `<div class="me-sub">정렬</div><div class="me-btns"><button class="me-mini" data-ic="justifyLeft">◧</button><button class="me-mini" data-ic="justifyCenter">▣</button><button class="me-mini" data-ic="justifyRight">◨</button></div>`;
+    html += `<div class="me-tip">💡 글자를 드래그로 선택한 뒤 색·서식을 누르면 그 부분만 바뀝니다. 아무 선택 없이 누르면 전체에 적용됩니다.</div>`;
+    // ── 설명란 번호 배지 전용 편집 (텍스트와 독립) ──
+    const ov = me.infoBadgeOverride || {};
+    html += `<div class="me-sel-count" style="margin-top:16px">🔢 설명란 번호</div>`;
+    html += `<div class="me-sub">모양</div><div class="me-btns"><button class="me-mini${ov.design === 'filled' ? ' on' : ''}" data-ib="filled">●</button><button class="me-mini${ov.design === 'outline' ? ' on' : ''}" data-ib="outline">○</button><button class="me-mini${ov.design === 'square' ? ' on' : ''}" data-ib="square">■</button></div>`;
+    html += `<div class="me-sub">번호 색</div><div class="me-sw-row">${me.swatches('ibc')}</div>`;
+    html += `<div class="me-sub">번호 글자색</div><div class="me-sw-row">${me.swatches('ibtc')}</div>`;
+    html += `<div class="me-sub">번호 크기</div><div class="me-row"><input type="range" min="0.7" max="2.2" step="0.1" value="${ov.size || 1}" data-ibs><span class="me-val" data-ibsv>${((ov.size || 1) * 100) | 0}%</span></div>`;
+    html += `<div class="me-tip">번호 배지는 글자와 분리되어 드래그에 딸려오지 않습니다. 여기서만 별도로 편집됩니다.</div>`;
+    body.innerHTML = html;
+    body.querySelector('[data-if="family"]').onchange = (e) => { if (bodyEl) bodyEl.style.fontFamily = e.target.value; me.infoEdited = true; };
+    const sizeR = body.querySelector('[data-if="size"]'), sizeV = body.querySelector('[data-if="sizeval"]');
+    if (sizeR) sizeR.oninput = (e) => { if (bodyEl) bodyEl.style.fontSize = e.target.value + 'px'; if (sizeV) sizeV.textContent = e.target.value; me.infoEdited = true; this._meFitBoard(); };
+    // 선택 글자 크기(pt): 저장된 선택 영역 복원 후 span으로 감싸 크기 지정
+    const pt = body.querySelector('[data-ifpt]');
+    if (pt) pt.onchange = () => { if (pt.value) { this._meApplyFontSizePx(bodyEl, parseInt(pt.value)); pt.value = ''; } };
+    // 서식/색상은 mousedown+preventDefault로 contenteditable 선택 유지
+    body.querySelectorAll('.me-sw[data-ifc]').forEach(b => b.onmousedown = (e) => { e.preventDefault(); document.execCommand('styleWithCSS', false, true); document.execCommand('foreColor', false, b.dataset.ifc); me.infoEdited = true; });
+    body.querySelectorAll('[data-ic]').forEach(b => b.onmousedown = (e) => { e.preventDefault(); document.execCommand(b.dataset.ic); me.infoEdited = true; });
+    // 설명란 번호 배지 편집 (props 패널 내부 — 일반 click)
+    const ensureOv = () => (me.infoBadgeOverride = me.infoBadgeOverride || {});
+    body.querySelectorAll('[data-ib]').forEach(b => b.onclick = () => { ensureOv().design = b.dataset.ib; this._meUpdateInfoBadges(); this._meRenderInfoProps(body); });
+    body.querySelectorAll('.me-sw[data-ibc]').forEach(b => b.onclick = () => { ensureOv().color = b.dataset.ibc; this._meUpdateInfoBadges(); });
+    body.querySelectorAll('.me-sw[data-ibtc]').forEach(b => b.onclick = () => { ensureOv().textColor = b.dataset.ibtc; this._meUpdateInfoBadges(); });
+    const ibs = body.querySelector('[data-ibs]'), ibsv = body.querySelector('[data-ibsv]');
+    if (ibs) ibs.oninput = () => { ensureOv().size = +ibs.value; if (ibsv) ibsv.textContent = ((+ibs.value) * 100 | 0) + '%'; this._meUpdateInfoBadges(); this._meFitBoard(); };
+  }
+
+  _meApplyFontSizePx(bodyEl, px) {
+    const me = this._me;
+    bodyEl.focus();
+    const sel = window.getSelection();
+    if (me.savedRange && bodyEl.contains(me.savedRange.commonAncestorContainer)) { sel.removeAllRanges(); sel.addRange(me.savedRange); }
+    if (!sel.rangeCount || sel.isCollapsed) { this.showToast('먼저 설명란에서 글자를 드래그로 선택하세요', 'info'); return; }
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('fontSize', false, '7'); // 임시 마커
+    bodyEl.querySelectorAll('font[size="7"], span[style*="font-size: xxx-large"]').forEach(f => { f.removeAttribute('size'); f.style.fontSize = px + 'px'; });
+    me.infoEdited = true; this._meFitBoard();
+  }
+
+  // 설명란 번호 배지 스타일 (지도 번호와 독립 — override 있으면 일괄 적용)
+  _infoBadgeStyleCss(it) {
+    const o = this._me.infoBadgeOverride;
+    const color = (o && o.color) || (it.style && it.style.color) || '#dc2626';
+    const tc = (o && o.textColor) || (it.style && it.style.textColor) || '#ffffff';
+    const design = (o && o.design) || (it.style && it.style.design) || 'filled';
+    const scale = (o && o.size) || 1;
+    const base = `display:inline-flex;align-items:center;justify-content:center;width:${(1.6 * scale).toFixed(2)}em;height:${(1.6 * scale).toFixed(2)}em;flex-shrink:0;font-weight:700;font-size:${(0.85 * scale).toFixed(2)}em;user-select:none;`;
+    if (design === 'outline') return base + `background:#fff;border:2px solid ${color};color:${color};border-radius:50%`;
+    if (design === 'square') return base + `background:${color};color:${tc};border-radius:5px`;
+    return base + `background:${color};color:${tc};border-radius:50%`;
+  }
+
+  // 텍스트를 건드리지 않고 배지 스타일만 제자리 갱신
+  _meUpdateInfoBadges() {
+    const me = this._me;
+    document.querySelectorAll('#me-info-body .me-info-badge').forEach(el => {
+      const n = +el.dataset.n;
+      const it = me.nums.find(x => x.n === n) || { n, style: {} };
+      el.setAttribute('style', this._infoBadgeStyleCss(it));
+    });
+  }
+
+  _meRenderProps() {
+    const me = this._me, body = document.getElementById('me-props-body'); if (!body) return;
+    const sel = [...me.selected];
+    if (me.infoSelected && !sel.length) { body.className = ''; this._meRenderInfoProps(body); return; }
+    if (!sel.length) { body.className = 'me-props-empty'; body.innerHTML = '지도에서 구간·번호를 클릭하거나<br>다중 선택으로 여러 개를 함께 편집하세요.<br><br>설명란을 클릭하면 글꼴·색·크기를 편집할 수 있습니다.'; return; }
+    body.className = '';
+    const hasZone = sel.some(s => s.kind === 'zone'), hasNum = sel.some(s => s.kind === 'num'), hasText = sel.some(s => s.kind === 'text');
+    let html = `<div class="me-sel-count">${sel.length}개 선택됨</div>`;
+    html += `<div class="me-sub">색상</div><div class="me-sw-row">${me.swatches('color')}</div>`;
+    html += `<div class="me-sub">불투명도</div><div class="me-row"><input type="range" min="20" max="100" value="${Math.round(((sel[0].style && sel[0].style.opacity) ?? 1) * 100)}" data-op></div>`;
+    if (hasZone) {
+      const z = sel.find(s => s.kind === 'zone');
+      html += `<div class="me-sub">선 굵기</div><div class="me-row"><input type="range" min="1" max="16" value="${z.style.weight}" data-zw></div>`;
+      html += `<div class="me-sub">선 스타일</div><div class="me-btns"><button class="me-mini" data-zd="solid">실선</button><button class="me-mini" data-zd="dash">점선</button><button class="me-mini" data-zd="dot">촘촘점선</button></div>`;
+    }
+    if (hasNum) {
+      const nn = sel.find(s => s.kind === 'num');
+      html += `<div class="me-sub">번호 디자인</div><div class="me-btns">${me.DESIGNS.map(d => `<button class="me-mini ${nn.style.design === d.id ? 'on' : ''}" data-nd="${d.id}">${d.name}</button>`).join('')}</div>`;
+      html += `<div class="me-sub">번호 글자색</div><div class="me-sw-row">${me.swatches('ntc')}</div>`;
+      html += `<div class="me-sub">번호 크기</div><div class="me-row"><input type="range" min="18" max="56" value="${nn.style.size}" data-ns></div>`;
+    }
+    if (hasText) {
+      const t = sel.find(s => s.kind === 'text');
+      html += `<div class="me-sub">텍스트 내용</div><div class="me-row"><input type="text" class="me-tin" value="${this.escapeHtml(t.text)}" data-tc></div>`;
+      html += `<div class="me-sub">글자 크기</div><div class="me-row"><input type="range" min="10" max="48" value="${t.style.fontSize}" data-ts></div>`;
+    }
+    html += `<div class="me-actions"><button class="me-mini me-mini-danger" data-act="del">선택 삭제</button></div>`;
+    body.innerHTML = html;
+
+    body.querySelectorAll('.me-sw[data-color]').forEach(b => b.onclick = () => this._meApplyColor(b.dataset.color));
+    body.querySelectorAll('.me-sw[data-ntc]').forEach(b => b.onclick = () => { me.selected.forEach(it => { if (it.kind === 'num') { it.style.textColor = b.dataset.ntc; it.marker.setIcon(this._meNumberIcon(it.n, it.style)); this._meVisual(it, true); } }); this._meRenderInfo(); });
+    const zw = body.querySelector('[data-zw]'); if (zw) zw.oninput = () => me.selected.forEach(it => { if (it.kind === 'zone') { it.style.weight = +zw.value; it.layer.setStyle({ weight: +zw.value }); } });
+    body.querySelectorAll('[data-zd]').forEach(b => b.onclick = () => { const da = b.dataset.zd === 'dash' ? '12,9' : (b.dataset.zd === 'dot' ? '3,7' : null); me.selected.forEach(it => { if (it.kind === 'zone') { it.style.dashArray = da; it.layer.setStyle({ dashArray: da }); } }); });
+    body.querySelectorAll('[data-nd]').forEach(b => b.onclick = () => { me.selected.forEach(it => { if (it.kind === 'num') { it.style.design = b.dataset.nd; it.marker.setIcon(this._meNumberIcon(it.n, it.style)); this._meVisual(it, true); } }); this._meRenderProps(); this._meRenderInfo(); });
+    const ns = body.querySelector('[data-ns]'); if (ns) ns.oninput = () => { me.selected.forEach(it => { if (it.kind === 'num') { it.style.size = +ns.value; it.marker.setIcon(this._meNumberIcon(it.n, it.style)); this._meVisual(it, true); } }); };
+    const ts = body.querySelector('[data-ts]'); if (ts) ts.oninput = () => { me.selected.forEach(it => { if (it.kind === 'text') { it.style.fontSize = +ts.value; this._meUpdateText(it); } }); };
+    const tc = body.querySelector('[data-tc]'); if (tc) tc.oninput = () => { me.selected.forEach(it => { if (it.kind === 'text') { it.text = tc.value; this._meUpdateText(it); } }); };
+    const op = body.querySelector('[data-op]'); if (op) op.oninput = () => this._meApplyOpacity(+op.value / 100);
+    body.querySelectorAll('[data-act]').forEach(b => b.onclick = () => this._meDoAct(b.dataset.act));
+  }
+
+  _meApplyOpacity(v) {
+    this._me.selected.forEach(it => {
+      it.style.opacity = v;
+      if (it.kind === 'zone') it.layer.setStyle({ opacity: v });
+      else { const el = it.marker.getElement(); if (el) el.style.opacity = v; }
+    });
+  }
+
+  _meRenderInfo() {
+    const me = this._me; if (!me) return;
+    const el = document.getElementById('me-info-body'); if (!el) return;
+    if (me.infoEdited) { this._meFitBoard(); return; } // 사용자가 직접 편집한 경우 유지
+    const title = document.getElementById('me-title')?.value || `${me.data.emdName} 탄력운영구간`;
+    const badge = (it) => `<span class="me-info-badge" contenteditable="false" data-n="${it.n}" style="${this._infoBadgeStyleCss(it)}">${it.n}</span>`;
+    const rows = me.nums.slice().sort((a, b) => a.n - b.n).map(it => {
+      const items = Object.keys(it.props).filter(k => it.props[k]).map(k => `${k}: <b>${it.props[k]}</b>`).join('<br>') || '(운영시간 정보 없음)';
+      return `<div class="me-info-row">${badge(it)}<div class="me-info-txt">${items}</div></div>`;
+    }).join('');
+    el.innerHTML = `<div class="me-info-title">${this.escapeHtml(title)} <span style="color:#dc2626">${me.nums.length}개소</span></div><div class="me-info-list">${rows}</div><div class="me-info-foot">남양주시 스마트주정차</div>`;
+    this._meFitBoard();
+  }
+
+  // 설명란(정보판): 드래그 이동 · 크기조절 · 직접 편집
+  _meInitInfoBox() {
+    const me = this._me;
+    const cap = document.getElementById('me-capture'), info = document.getElementById('me-info');
+    const head = document.getElementById('me-info-head'), resize = document.getElementById('me-info-resize'), bodyEl = document.getElementById('me-info-body');
+    const mapEl = document.getElementById('me-map'); if (!cap || !info || !mapEl) return;
+    const mapW = mapEl.offsetWidth || 760;
+    info.style.left = (mapW + 12) + 'px'; info.style.top = '12px'; info.style.width = '396px';
+    bodyEl.addEventListener('input', () => { me.infoEdited = true; });
+    bodyEl.addEventListener('focus', () => this._meSelectInfo());
+    head.addEventListener('click', () => { this._meSelectInfo(); bodyEl.focus(); });
+    // 서식 적용을 위해 현재 선택 영역 보존
+    const saveRange = () => { const s = window.getSelection(); if (s.rangeCount && bodyEl.contains(s.anchorNode)) me.savedRange = s.getRangeAt(0).cloneRange(); };
+    bodyEl.addEventListener('keyup', saveRange); bodyEl.addEventListener('mouseup', saveRange);
+    const startDrag = (e, mode) => {
+      e.preventDefault(); e.stopPropagation();
+      const sx = e.clientX, sy = e.clientY, ol = info.offsetLeft, ot = info.offsetTop, ow = info.offsetWidth, oh = info.offsetHeight;
+      const mv = (ev) => {
+        if (mode === 'move') { info.style.left = Math.max(0, ol + ev.clientX - sx) + 'px'; info.style.top = Math.max(0, ot + ev.clientY - sy) + 'px'; }
+        else { info.style.width = Math.max(200, ow + ev.clientX - sx) + 'px'; info.style.height = Math.max(140, oh + ev.clientY - sy) + 'px'; }
+        this._meFitBoard();
+      };
+      const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+      document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+    };
+    head.addEventListener('mousedown', (e) => startDrag(e, 'move'));
+    resize.addEventListener('mousedown', (e) => startDrag(e, 'resize'));
+    this._meFitBoard();
+  }
+  _meFitBoard() {
+    const cap = document.getElementById('me-capture'), info = document.getElementById('me-info'), mapEl = document.getElementById('me-map');
+    if (!cap || !mapEl) return;
+    const mapW = mapEl.offsetWidth, mapH = mapEl.offsetHeight;
+    const iw = info ? info.offsetLeft + info.offsetWidth : mapW;
+    const ih = info ? info.offsetTop + info.offsetHeight : mapH;
+    cap.style.width = Math.max(mapW, iw) + 12 + 'px';
+    cap.style.height = Math.max(mapH, ih) + 12 + 'px';
+  }
+
+  _meRenderLayers() {
+    const me = this._me, body = document.getElementById('me-layers-body'); if (!body) return;
+    const all = [...me.zones.map(z => ({ it: z, nm: `➰ 구간 ${z.n}` })), ...me.nums.map(n => ({ it: n, nm: `① 번호 ${n.n}` })), ...me.texts.map(t => ({ it: t, nm: `✎ ${t.text || '텍스트'}` }))];
+    body.innerHTML = all.map((r, i) => `<div class="me-layer-item ${me.selected.has(r.it) ? 'on' : ''}" data-i="${i}">${r.nm}</div>`).join('');
+    body.querySelectorAll('.me-layer-item').forEach(el => el.onclick = (e) => this._meClick(all[+el.dataset.i].it, e));
+  }
+
+  async _meExport() {
+    const me = this._me; if (!me) return;
+    this.showToast('이미지 내보내는 중...', 'info');
+    this._meClearSelection(true);
+    try { document.activeElement && document.activeElement.blur(); } catch (e) {}
+    this._meFitBoard();
+    const cap = document.getElementById('me-capture'), wrap = cap.parentElement;
+    // 보드를 화면에 맞게 축소(정적 캡처라 Leaflet 상호작용 무관) → 큰 보드도 온전히 캡처
+    const w = cap.offsetWidth, h = cap.offsetHeight;
+    const fit = Math.min((wrap.clientWidth - 20) / w, (wrap.clientHeight - 20) / h, 1);
+    wrap.scrollLeft = 0; wrap.scrollTop = 0;
+    cap.classList.add('me-capturing');
+    cap.style.transform = `scale(${fit})`; cap.style.transformOrigin = 'top left';
+    await new Promise(r => setTimeout(r, 450));
+    let png = null;
+    try {
+      const r = cap.getBoundingClientRect();
+      png = await window.electronAPI.settings.captureMap({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) });
+    } catch (e) { console.error(e); }
+    cap.style.transform = ''; cap.classList.remove('me-capturing');
+    if (!png) { this.showToast('내보내기 실패', 'error'); return; }
+    const name = (document.getElementById('me-title')?.value || me.data.emdName + ' 탄력운영구간').trim();
+    const res = await window.electronAPI.map.saveImage({ dataURL: png, defaultName: name });
+    if (res && res.success) this.showToast('이미지를 저장했습니다', 'success');
+    else if (!res || !res.canceled) this.showToast('저장 중 오류가 발생했습니다', 'error');
+  }
+
+  closeMapEditor() {
+    const me = this._me;
+    if (me && me._key) document.removeEventListener('keydown', me._key);
+    try { me?.map?.remove(); } catch (e) {}
+    document.getElementById('map-editor-overlay')?.remove();
+    this._me = null;
+  }
+
 
   initializeChart() {
     const ctx = document.getElementById('stats-chart');
@@ -4065,6 +4759,7 @@ class AnalysisManager {
             핫스팟 분석 리포트 — ${data.length}개 구간 · 총 ${totalPages}페이지
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0">
+            <button onclick="MapApp.analysis.exportReportHTML()" style="padding:8px 18px;border-radius:8px;border:none;background:#0ea5e9;color:#fff;font-size:13px;font-weight:700;cursor:pointer" title="마우스를 올리면 수치가 표시되는 인터랙티브 HTML로 저장 (프로그램 없이 열람 가능)">HTML로 저장</button>
             <button onclick="MapApp.analysis.printReport()" style="padding:8px 18px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">PDF 출력</button>
             <button onclick="document.getElementById('hs-report-overlay')?.remove()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer">닫기</button>
           </div>
@@ -4164,6 +4859,55 @@ class AnalysisManager {
           }
         }
       });
+    }
+
+    // ── 인터랙티브 HTML 내보내기용 데이터 보관 (차트 재구성에 필요) ──
+    const _barTop10 = [...data].sort((a, b) => b.monthly_avg - a.monthly_avg).slice(0, 10);
+    this._lastReportExport = {
+      bodyHTML: paper1 + tablePages,
+      donut: {
+        labels: ['상시단속', '고위험', '주의', '보통'],
+        data: [counts.critical, counts.high, counts.medium, counts.low],
+        colors: ['#ef4444', '#f97316', '#eab308', '#22c55e']
+      },
+      bar: {
+        labels: _barTop10.map((h, i) => {
+          const l = h.address || `${h.center_lat.toFixed(4)}, ${h.center_lng.toFixed(4)}`;
+          return `#${i + 1}  ${l.length > 20 ? l.slice(0, 20) + '…' : l}`;
+        }),
+        data: _barTop10.map(h => h.monthly_avg),
+        colors: _barTop10.map(h => COLOR[h.risk_level])
+      },
+      meta: { dateStr, count: data.length, totalPages }
+    };
+  }
+
+  // 자기완결형 인터랙티브 HTML 리포트 저장 (차트 hover 수치 표시 · 오프라인 동작)
+  async exportReportHTML() {
+    const R = this._lastReportExport;
+    if (!R) { this.app.showToast('리포트를 먼저 열어주세요', 'warning'); return; }
+    this.app.showToast('HTML 리포트 생성 중...', 'info');
+
+    const initScript = `
+      const sliceLabelPlugin = { id:'hsSliceLabels', afterDatasetsDraw(chart){ const {ctx,data}=chart; const total=data.datasets[0].data.reduce((a,b)=>a+b,0); if(!total)return; chart.getDatasetMeta(0).data.forEach((arc,i)=>{ const val=data.datasets[0].data[i]; if(!val)return; const pct=Math.round(val/total*100); if(pct<4)return; const mid=(arc.startAngle+arc.endAngle)/2, r=(arc.innerRadius+arc.outerRadius)/2; const x=arc.x+r*Math.cos(mid), y=arc.y+r*Math.sin(mid); ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff'; ctx.font='bold 11px sans-serif'; ctx.fillText(String(val),x,y-6); ctx.font='9px sans-serif'; ctx.fillText(pct+'%',x,y+6); ctx.restore(); }); } };
+      const D = ${JSON.stringify(R.donut)};
+      const B = ${JSON.stringify(R.bar)};
+      const dc = document.getElementById('hs-rp-donut');
+      if (dc) new Chart(dc, { type:'doughnut', plugins:[sliceLabelPlugin], data:{ labels:D.labels, datasets:[{ data:D.data, backgroundColor:D.colors, borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:10}, boxWidth:10, padding:8, generateLabels(chart){ const d=chart.data; return d.labels.map((lbl,i)=>({ text: lbl+'  '+d.datasets[0].data[i]+'개', fillStyle:d.datasets[0].backgroundColor[i], strokeStyle:'transparent', lineWidth:0, hidden:false, index:i })); } } } } } });
+      const bc = document.getElementById('hs-rp-bar');
+      if (bc) new Chart(bc, { type:'bar', data:{ labels:B.labels, datasets:[{ data:B.data, backgroundColor:B.colors, borderRadius:3, borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color:'#94a3b8', font:{size:9} } }, y:{ ticks:{ color:'#475569', font:{size:9}, autoSkip:false, maxRotation:0 } } } } });
+    `;
+
+    try {
+      const res = await window.electronAPI.report.exportHTML({
+        title: '핫스팟 분석 리포트',
+        bodyHTML: R.bodyHTML,
+        initScript
+      });
+      if (res && res.success) this.app.showToast('HTML 리포트를 저장했습니다', 'success');
+      else if (!res || !res.canceled) this.app.showToast('HTML 저장 중 오류가 발생했습니다', 'error');
+    } catch (e) {
+      this.app.showToast('HTML 저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -5334,6 +6078,7 @@ class SpatialStatsManager {
             선택 영역 통계 리포트 — ${total.toLocaleString()}개 마커 · ${sorted.length}개 장소 · 총 ${totalPages}페이지
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button onclick="MapApp.spatialStats.exportSelectionReportHTML()" style="padding:8px 18px;border-radius:8px;border:none;background:#0ea5e9;color:#fff;font-size:13px;font-weight:700;cursor:pointer;" title="마우스를 올리면 수치가 표시되는 인터랙티브 HTML로 저장">HTML로 저장</button>
             <button onclick="MapApp.spatialStats.printSelectionReport()" style="padding:8px 18px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">PDF 출력</button>
             <button onclick="document.getElementById('sel-report-overlay')?.remove()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;">닫기</button>
           </div>
@@ -5347,9 +6092,10 @@ class SpatialStatsManager {
 
     // ── 6. 차트 렌더링 ──
     const ctx = document.getElementById('sel-rp-chart');
+    let _selChartSpec = null;
     if (ctx) {
       const top = sorted.slice(0, 15);
-      new Chart(ctx, {
+      const _selCfg = {
         type: 'bar',
         data: {
           labels: top.map(([k]) => k.length > 15 ? k.slice(0, 15) + '…' : k),
@@ -5363,8 +6109,17 @@ class SpatialStatsManager {
             y: { ticks: { color: '#475569', font: { size: 10 } } }
           }
         }
-      });
+      };
+      new Chart(ctx, _selCfg);
+      _selChartSpec = { id: 'sel-rp-chart', config: _selCfg };
     }
+
+    // ── HTML 내보내기용 데이터 보관 ──
+    this._selReportExport = {
+      title: '선택 영역 통계 리포트',
+      bodyHTML: paper1 + tablePages,
+      chartSpecs: _selChartSpec ? [_selChartSpec] : []
+    };
   }
 
   async printSelectionReport() {
@@ -5378,6 +6133,12 @@ class SpatialStatsManager {
     } finally {
       document.body.classList.remove('sel-print');
     }
+  }
+
+  async exportSelectionReportHTML() {
+    const R = this._selReportExport;
+    if (!R) { this.app.showToast('리포트를 먼저 열어주세요', 'warning'); return; }
+    await this.app.saveInteractiveReportHTML({ title: R.title, bodyHTML: R.bodyHTML, chartSpecs: R.chartSpecs });
   }
 
   clearSelection() {
@@ -6547,6 +7308,7 @@ const MainTabs = (() => {
 
   // ── 리포트 탭 컨트롤러 ──
   let _reportCharts = [];
+  let _reportChartSpecs = [];  // HTML 내보내기용 차트 config 수집
 
   const ReportPage = {
     setQuick(type) {
@@ -6625,6 +7387,7 @@ const MainTabs = (() => {
         // ── 기존 차트 소멸 ──
         _reportCharts.forEach(c => { try { c.destroy(); } catch (_) {} });
         _reportCharts = [];
+        _reportChartSpecs = [];
 
         // 공통 축 옵션 (흑백 인쇄 친화)
         const rpAxis = {
@@ -6643,7 +7406,7 @@ const MainTabs = (() => {
         if (typeCanvas && totalsEntries.length > 0) {
           const tLabels = totalsEntries.map(([k]) => k);
           const tVals   = totalsEntries.map(([, v]) => v);
-          _reportCharts.push(new Chart(typeCanvas, {
+          const _cfgType = {
             type: 'doughnut',
             data: {
               labels: tLabels,
@@ -6653,7 +7416,9 @@ const MainTabs = (() => {
               responsive: true, maintainAspectRatio: false,
               plugins: { legend: { display: false } }
             }
-          }));
+          };
+          _reportCharts.push(new Chart(typeCanvas, _cfgType));
+          _reportChartSpecs.push({ id: 'rp-chart-type', config: _cfgType });
         }
 
         // ── 유형별 항목 행 (도넛 오른쪽) ──
@@ -6675,7 +7440,7 @@ const MainTabs = (() => {
         // ── Chart 1: 월별 추이 Line ──
         const monthCanvas = el('rp-chart-monthly');
         if (monthCanvas && data.byMonth?.length > 0) {
-          _reportCharts.push(new Chart(monthCanvas, {
+          const _cfgMonth = {
             type: 'line',
             data: {
               labels: data.byMonth.map(d => d.month),
@@ -6691,7 +7456,9 @@ const MainTabs = (() => {
               plugins: { legend: { display: false } },
               scales: rpAxis
             }
-          }));
+          };
+          _reportCharts.push(new Chart(monthCanvas, _cfgMonth));
+          _reportChartSpecs.push({ id: 'rp-chart-monthly', config: _cfgMonth });
         }
 
         // ── Chart 2: 상위 읍면동 TOP 10 수평 막대 (법정동 정규화) ──
@@ -6701,7 +7468,7 @@ const MainTabs = (() => {
         const normTopDong = normAllDong.slice(0, 10);
         if (dongCanvas && dongWrap && normTopDong.length > 0) {
           dongWrap.style.height = Math.max(180, normTopDong.length * 28) + 'px';
-          _reportCharts.push(new Chart(dongCanvas, {
+          const _cfgDong = {
             type: 'bar',
             data: {
               labels: normTopDong.map(d => d.단속동),
@@ -6715,7 +7482,9 @@ const MainTabs = (() => {
               plugins: { legend: { display: false } },
               scales: rpAxisSm
             }
-          }));
+          };
+          _reportCharts.push(new Chart(dongCanvas, _cfgDong));
+          _reportChartSpecs.push({ id: 'rp-chart-dong', config: _cfgDong });
         }
 
         // ── Chart 3: 위반법규 TOP 10 (byZone 합산) 수평 막대 ──
@@ -6724,7 +7493,7 @@ const MainTabs = (() => {
         const mergedViol  = _mergeViolations(data.byViolation, data.byZone);
         if (violCanvas && violWrap && mergedViol.length > 0) {
           violWrap.style.height = Math.max(180, mergedViol.length * 28) + 'px';
-          _reportCharts.push(new Chart(violCanvas, {
+          const _cfgViol = {
             type: 'bar',
             data: {
               labels: mergedViol.map(d => d.위반법규),
@@ -6738,7 +7507,9 @@ const MainTabs = (() => {
               plugins: { legend: { display: false } },
               scales: rpAxisSm
             }
-          }));
+          };
+          _reportCharts.push(new Chart(violCanvas, _cfgViol));
+          _reportChartSpecs.push({ id: 'rp-chart-viol', config: _cfgViol });
         }
 
         // ── 읍면동 상세 테이블 (법정동 정규화 + 기타 합산, 페이지 분할) ──
@@ -6807,6 +7578,21 @@ const MainTabs = (() => {
       } finally {
         if (btn) { btn.disabled = false; if (btnHTML) btn.innerHTML = btnHTML; else btn.textContent = '미리보기 생성'; }
       }
+    },
+
+    async exportHTML() {
+      const paper = document.getElementById('report-paper');
+      if (!paper?.classList.contains('visible')) {
+        MapApp?.showToast('먼저 미리보기를 생성해주세요', 'info');
+        return;
+      }
+      const area = document.getElementById('report-scroll-area');
+      if (!area) return;
+      // 캔버스의 width/height/style 제거한 사본으로 bodyHTML 구성 (내보낸 HTML에서 차트 재렌더 대비)
+      const clone = area.cloneNode(true);
+      clone.querySelectorAll('canvas').forEach(c => { c.removeAttribute('width'); c.removeAttribute('height'); c.removeAttribute('style'); });
+      const title = document.getElementById('rp-title')?.textContent || '단속 현황 보고서';
+      await MapApp?.saveInteractiveReportHTML({ title, bodyHTML: clone.innerHTML, chartSpecs: _reportChartSpecs });
     },
 
     exportPDF() {
